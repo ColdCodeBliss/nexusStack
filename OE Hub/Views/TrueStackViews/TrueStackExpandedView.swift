@@ -4,12 +4,15 @@
 //
 //  Created by Ryan Bliss on 9/24/25.
 //
+
 import SwiftUI
 
 @available(iOS 26.0, *)
 struct TrueStackExpandedView: View {
+    // MARK: Inputs
     let job: Job
 
+    // Callbacks (wired by TSDV)
     let close: () -> Void
     let openDue: () -> Void
     let openChecklist: () -> Void
@@ -19,19 +22,19 @@ struct TrueStackExpandedView: View {
     let openGitHub: () -> Void
     let openConfluence: () -> Void
 
-    // Drag-to-dismiss state
+    // MARK: State (for drag-to-dismiss)
     @State private var dragOffsetY: CGFloat = 0
     @GestureState private var dragTranslation: CGSize = .zero
 
     var body: some View {
         GeometryReader { geo in
-            // Sheet sizing
-            let maxW = min(geo.size.width * 0.96, 700)
-            let maxH = geo.size.height * 0.85
-            let tint = color(for: job.colorCode)
+            // Bottom sheet sizing: wide enough, tall enough, but leaves a little space at the top
+            let maxW  = min(geo.size.width  * 0.96, 700)
+            let maxH  = geo.size.height * 0.90
+            let tint  = color(for: job.colorCode)
 
             VStack(spacing: 0) {
-                // Header (fixed)
+                // Header (chevron down + grabber)
                 HStack(spacing: 10) {
                     Button(action: close) {
                         Image(systemName: "chevron.down")
@@ -50,47 +53,90 @@ struct TrueStackExpandedView: View {
                 .padding(.top, 8)
                 .padding(.horizontal, 10)
 
+                // Title
                 Text(job.title)
                     .font(.title2.weight(.semibold))
                     .lineLimit(1)
                     .padding(.top, 6)
                     .padding(.bottom, 10)
 
-                // Content (scrollable when needed — fixes landscape overflow)
+                // Content (scrolls when needed — avoids landscape overflow)
                 ScrollView(.vertical, showsIndicators: true) {
                     VStack(spacing: 10) {
-                        ActionRow(system: "calendar", title: "Due",        blurb: "Deliverables & reminders",          action: openDue)
-                        ActionRow(system: "checkmark.square", title: "Checklist", blurb: "Quick to-do items per stack", action: openChecklist)
-                        ActionRow(system: "point.topleft.down.curvedto.point.bottomright.up", title: "Mind Map", blurb: "Zoomable canvas of ideas", action: openMindMap)
-                        ActionRow(system: "note.text", title: "Notes",      blurb: "Rich text with basic formatting",  action: openNotes)
-                        ActionRow(system: "info.circle", title: "Info",     blurb: "Metadata, pay, role & more",       action: openInfo)
-                        ActionRow(system: "chevron.left.slash.chevron.right", title: "GitHub", blurb: "Browse repo files & recents", action: openGitHub)
-                        ActionRow(system: "link", title: "Confluence",      blurb: "Save up to 5 links per stack",     action: openConfluence)
+                        ActionRow(system: "calendar",
+                                  title: "Due",
+                                  blurb: "Deliverables & reminders",
+                                  action: openDue)
+
+                        ActionRow(system: "checkmark.square",
+                                  title: "Checklist",
+                                  blurb: "Quick to-do items per stack",
+                                  action: openChecklist)
+
+                        ActionRow(system: "point.topleft.down.curvedto.point.bottomright.up",
+                                  title: "Mind Map",
+                                  blurb: "Zoomable canvas of ideas",
+                                  action: openMindMap)
+
+                        ActionRow(system: "note.text",
+                                  title: "Notes",
+                                  blurb: "Rich text with basic formatting",
+                                  action: openNotes)
+
+                        ActionRow(system: "info.circle",
+                                  title: "Info",
+                                  blurb: "Metadata, pay, role & more",
+                                  action: openInfo)
+
+                        ActionRow(system: "chevron.left.slash.chevron.right",
+                                  title: "GitHub",
+                                  blurb: "Browse repo files & recents",
+                                  action: openGitHub)
+
+                        ActionRow(system: "link",
+                                  title: "Confluence",
+                                  blurb: "Save up to 5 links per stack",
+                                  action: openConfluence)
                     }
                     .padding(.horizontal, 12)
                     .padding(.bottom, 14)
                 }
             }
-            .frame(width: maxW)                            // width cap
-            .frame(maxHeight: maxH, alignment: .top)       // panel height cap
+            // Sheet chrome & layout
+            .frame(width: maxW)                              // cap width
+            .frame(maxHeight: maxH, alignment: .top)         // cap height (lets ScrollView handle overflow)
             .background(
                 ZStack {
-                    Color.clear.glassEffect(.regular.tint(tint.opacity(0.55)), in: .rect(cornerRadius: 24))
+                    // Tinted glass (matches job color)
+                    Color.clear.glassEffect(.regular.tint(tint.opacity(0.55)),
+                                             in: .rect(cornerRadius: 24))
+                    // Subtle plus-lighter glow layer
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(LinearGradient(colors: [Color.white.opacity(0.16), .clear],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .fill(
+                            LinearGradient(colors: [Color.white.opacity(0.16), .clear],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
                         .blendMode(.plusLighter)
+                    // Hairline stroke
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .stroke(Color.white.opacity(0.10), lineWidth: 1)
                 }
             )
             .shadow(color: .black.opacity(0.35), radius: 24, y: 10)
             .padding(.horizontal, 12)
-            .padding(.bottom, max(12, geo.safeAreaInsets.bottom + 8))
-            .offset(y: max(0, dragOffsetY + dragTranslation.height)) // live drag
+            .padding(.bottom, max(12, geo.safeAreaInsets.bottom + 8)) // keep off the very bottom edge
+
+            // Live drag offset while swiping down
+            .offset(y: max(0, dragOffsetY + dragTranslation.height))
+
+            // Lock to bottom of the screen, slide in/out from bottom
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             .transition(.move(edge: .bottom).combined(with: .opacity))
+
+            // Drag-to-dismiss (with a sensible threshold)
             .gesture(dragGesture(geoHeight: geo.size.height))
+
+            // Smoothen the drag animation
             .animation(.spring(response: 0.35, dampingFraction: 0.9), value: dragTranslation)
             .animation(.spring(response: 0.35, dampingFraction: 0.9), value: dragOffsetY)
         }
@@ -109,6 +155,7 @@ struct TrueStackExpandedView: View {
     }
 }
 
+// MARK: - Action Row
 
 @available(iOS 26.0, *)
 private struct ActionRow: View {

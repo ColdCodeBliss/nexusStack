@@ -14,6 +14,14 @@ private struct ViewHeightKey: PreferenceKey {
     }
 }
 
+// MARK: - Unified detail routing model
+@available(iOS 26.0, *)
+private struct ActiveDetail: Identifiable, Equatable {
+    let id = UUID()
+    let job: Job
+    let tab: JobDetailView.DetailTab
+}
+
 @available(iOS 26.0, *)
 struct TrueStackDeckView: View {
     // Input
@@ -36,14 +44,9 @@ struct TrueStackDeckView: View {
     @State private var expandedJob: Job? = nil
     @Namespace private var deckNS
 
-    // Routes
+    // External routes (unchanged behavior)
     @State private var showGitHub = false
     @State private var showConfluence = false
-    @State private var showDue = false
-    @State private var showChecklist = false
-    @State private var showMindMap = false
-    @State private var showNotes = false
-    @State private var showInfo = false
 
     // Context
     @State private var showRenameAlert = false
@@ -54,12 +57,9 @@ struct TrueStackDeckView: View {
     // Settings / Help
     @State private var showSettings = false
     @State private var showHelp = false
-    
-    // Add near your other @State in TSDV
-    @State private var initialDetailTab: JobDetailView.DetailTab = .due
-    @State private var showDetail = false
 
-
+    // NEW: single source of truth for which detail tab to open
+    @State private var activeDetail: ActiveDetail? = nil
 
     // Layout dials
     private let horizontalGutter: CGFloat = 18
@@ -122,17 +122,17 @@ struct TrueStackDeckView: View {
                     Spacer(minLength: bottomInset)
                 }
 
-                // Expanded overlay
+                // Expanded overlay (centered)
                 if let selected = expandedJob {
                     Color.black.opacity(0.20).ignoresSafeArea().transition(.opacity)
                     TrueStackExpandedView(
                         job: selected,
                         close: { withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { expandedJob = nil } },
-                        openDue:        { presentDetail(.due) },
-                        openChecklist:  { presentDetail(.checklist) },
-                        openMindMap:    { presentDetail(.mindmap) },
-                        openNotes:      { presentDetail(.notes) },
-                        openInfo:       { presentDetail(.info) },
+                        openDue:        { openDetail(for: selected, tab: .due) },
+                        openChecklist:  { openDetail(for: selected, tab: .checklist) },
+                        openMindMap:    { openDetail(for: selected, tab: .mindmap) },
+                        openNotes:      { openDetail(for: selected, tab: .notes) },
+                        openInfo:       { openDetail(for: selected, tab: .info) },
                         openGitHub:     { showGitHub = true },
                         openConfluence: { showConfluence = true }
                     )
@@ -142,11 +142,9 @@ struct TrueStackDeckView: View {
                 }
 
                 // ──────────────────────────────────────────────────────────────
-                // Corner controls (Hamburger left, Add right) with portrait/landscape tuning
-                // + center logo (portrait only)
+                // Corner controls + center logo (portrait on iPhone; both on iPad)
                 // ──────────────────────────────────────────────────────────────
                 GeometryReader { g in
-                    // Orientation
                     let isLandscape = g.size.width > g.size.height
                     let isPad = UIDevice.current.userInterfaceIdiom == .pad
 
@@ -159,22 +157,22 @@ struct TrueStackDeckView: View {
                     let buttonSize: CGFloat = 40
                     let half: CGFloat = buttonSize / 2
 
-                    // Tunable iPad landscape bump (adjust to taste)
-                    let padLandscapeBumpY: CGFloat = 22   // try 8–14 if you want a bit more/less
+                    // Tunable iPad landscape bump (you chose 22)
+                    let padLandscapeBumpY: CGFloat = 22
 
-                    // Portrait (unchanged)
+                    // Portrait positions
                     let portraitLeftX  = safeLeading + 16 + half
                     let portraitLeftY  = safeTop + 56 + half
                     let portraitRightX = g.size.width - safeTrailing - 16 - half
                     let portraitRightY = portraitLeftY
 
-                    // Landscape: just inside the corners + optional iPad bump
+                    // Landscape positions (+ optional iPad bump)
                     let landscapeLeftX  = safeLeading + 24 + half
                     let landscapeLeftY  = safeTop + 12 + half + ((isPad && isLandscape) ? padLandscapeBumpY : 0)
                     let landscapeRightX = g.size.width - safeTrailing - 24 - half
                     let landscapeRightY = landscapeLeftY
 
-                    // Hamburger (Menu with Settings + Help)
+                    // Hamburger (Settings / Help)
                     Menu {
                         Button("Settings") { showSettings = true }
                         Button("Help")     { showHelp = true }
@@ -198,7 +196,7 @@ struct TrueStackDeckView: View {
                         y: isLandscape ? landscapeLeftY  : portraitLeftY
                     )
 
-                    // ➕ Add Job (mirrors hamburger, but top-right)
+                    // ➕ Add Job
                     Button {
                         addJob()
                     } label: {
@@ -223,20 +221,16 @@ struct TrueStackDeckView: View {
 
                     // Center logo (portrait on iPhone; both orientations on iPad)
                     if (!isLandscape) || isPad {
-                        // Y position: match your corner-control baselines
-                        // - iPhone portrait uses a small bump
-                        // - iPad landscape uses the same landscapeLeftY you already computed (which includes your 22pt bump)
                         let phonePortraitBump: CGFloat = 12
                         let logoY: CGFloat = (isPad && isLandscape)
-                            ? landscapeLeftY                  // already includes your iPad landscape bump
+                            ? landscapeLeftY             // includes iPad bump
                             : (portraitLeftY + phonePortraitBump)
 
-                        // Width: keep iPhone as-is; give iPad a slightly higher cap
                         let logoWidth = isPad
-                            ? min(g.size.width * 0.12, 100)   // tweak as desired for iPad
-                            : min(g.size.width * 0.21, 96)    // your existing iPhone sizing
+                            ? min(g.size.width * 0.12, 100)
+                            : min(g.size.width * 0.21, 96)
 
-                        Image("nexusStack_logo")              // single asset with Any/Dark variants
+                        Image("nexusStack_logo")        // Any/Dark variants are handled in the asset
                             .resizable()
                             .scaledToFit()
                             .frame(width: logoWidth)
@@ -245,10 +239,8 @@ struct TrueStackDeckView: View {
                             .accessibilityHidden(true)
                             .zIndex(2)
                     }
-
                 }
                 .ignoresSafeArea()
-
             }
 
             // Initialize deck
@@ -267,19 +259,23 @@ struct TrueStackDeckView: View {
                 topCardContentHeight = 0
             }
 
-            // Routes
-            // Routes  (replace the 5 per-tab sheets with this one)
-            .sheet(isPresented: $showDetail) {
+            // ROUTES
+            // Single detail sheet that honors the initial tab on first open
+            .sheet(item: $activeDetail) { detail in
+                JobDetailView(job: detail.job, initialTab: detail.tab)
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+
+            // External full-screen views (unchanged)
+            .fullScreenCover(isPresented: $showGitHub) {
                 if let j = expandedJob {
-                    JobDetailView(job: j, initialTab: initialDetailTab)
-                        .navigationBarTitleDisplayMode(.inline)
+                    GitHubBrowserView(recentKey: "recentRepos.\(j.repoBucketKey)")
                 }
             }
-            .fullScreenCover(isPresented: $showGitHub) {
-                if let j = expandedJob { GitHubBrowserView(recentKey: "recentRepos.\(j.repoBucketKey)") }
-            }
             .fullScreenCover(isPresented: $showConfluence) {
-                if let j = expandedJob { ConfluenceLinksView(storageKey: "confluenceLinks.\(j.repoBucketKey)", maxLinks: 5) }
+                if let j = expandedJob {
+                    ConfluenceLinksView(storageKey: "confluenceLinks.\(j.repoBucketKey)", maxLinks: 5)
+                }
             }
 
             // Settings / Help
@@ -440,9 +436,7 @@ struct TrueStackDeckView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.88), value: dragTranslation)
         .onPreferenceChange(ViewHeightKey.self) { h in
             if isTop, h > 0 {
-                withAnimation(.none) {
-                    topCardContentHeight = h
-                }
+                withAnimation(.none) { topCardContentHeight = h }
             }
         }
         .shadow(color: .black.opacity(isTop ? 0.35 : 0.22),
@@ -501,14 +495,23 @@ struct TrueStackDeckView: View {
         try? modelContext.save()
     }
 
-    private func presentDetail(_ tab: JobDetailView.DetailTab) {
-        initialDetailTab = tab
-        showDetail = true
+    // MARK: - Routing helper
+
+    private func openDetail(for job: Job, tab: JobDetailView.DetailTab) {
+        // Close the expanded panel and open the requested tab on the detail sheet.
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+            expandedJob = nil
+        }
+        // Set the item AFTER closing to avoid animation conflicts.
+        // Dispatch to next runloop ensures the sheet reads the correct initial tab on first presentation.
+        DispatchQueue.main.async {
+            activeDetail = ActiveDetail(job: job, tab: tab)
+        }
     }
 
     // MARK: - Add Job (mirrors HomeView behavior)
+
     private func addJob() {
-        // Title like "Stack N" to match your existing convention
         let nextIndex = (jobs.count + 1)
         let newJob = Job(title: "Stack \(nextIndex)")
         modelContext.insert(newJob)
@@ -517,7 +520,6 @@ struct TrueStackDeckView: View {
         } catch {
             print("Error saving new stack: \(error)")
         }
-
         // Make it feel instant in this view as well:
         deck.insert(newJob, at: 0)
     }

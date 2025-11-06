@@ -49,16 +49,57 @@ struct NotesTabView: View {
     }
 
     var body: some View {
-        ScrollView {
-            makeGrid(notes: sortedNotes)
-                .padding()
+        VStack(spacing: 0) {
+            // Header row: "Notes" + glassy "+"
+            HStack(spacing: 8) {
+                Text("Notes")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    // Opens the same compose flow you already use
+                    prepareNewNote()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.semibold))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Group {
+                                if #available(iOS 26.0, *), isBetaGlassEnabled {
+                                    Color.clear.glassEffect(.regular, in: .circle)
+                                } else {
+                                    Circle().fill(.ultraThinMaterial)
+                                }
+                            }
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .contentShape(Circle())
+                .accessibilityLabel("Add Note")
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
+            // Your existing grid of notes
+            ScrollView {
+                makeGrid(notes: sortedNotes)
+                    .padding()
+            }
         }
+        // Keep your existing editors exactly as-is
         .sheet(isPresented: nonBetaSheetIsPresented) { nonBetaSheet }
         .overlay { betaOverlay }
-        .navigationTitle("Notes")
+        .navigationTitle("Notes") // harmless; will be hidden by our inline header if shown in a sheet
         .animation(.default, value: job.notes.count)
         .onChange(of: addNoteTrigger) { _, _ in prepareNewNote() }
     }
+
 
     // MARK: - Builders
 

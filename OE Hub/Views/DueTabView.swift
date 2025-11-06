@@ -71,6 +71,10 @@ struct DueTabView: View {
                     .transition(.opacity)
             }
         }
+        // ⬇️ NEW: give the sheet a little breathing room at the very top
+            .safeAreaInset(edge: .top) {
+                Color.clear.frame(height: 12)
+            }
         .background(Gradient(colors: [.blue, .purple]).opacity(0.1))
         .onAppear {
             showAddDeliverableForm = false
@@ -209,6 +213,7 @@ struct DueTabView: View {
             .padding(.horizontal)
         }
         .padding()
+        .padding(.top, 8)
         .background(.ultraThinMaterial) // kept as-is (no Classic toggle dependency)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
@@ -225,7 +230,41 @@ struct DueTabView: View {
 
     @ViewBuilder
     private var activeDeliverablesSection: some View {
-        Section(header: Text("Active Deliverables")) {
+        Section(
+            header:
+                HStack(spacing: 8) {
+                    Text("Active Deliverables")
+                        .font(.headline)
+
+                    Spacer()
+
+                    // Glassy "+" button (matches app style)
+                                Button {
+                                    showAddDeliverableForm = true
+                                } label: {
+                                    Image(systemName: "plus")
+                                        .font(.headline.weight(.semibold))
+                                        .frame(width: 32, height: 32)
+                                        .background(
+                                            Group {
+                                                if #available(iOS 26.0, *), isBetaGlassEnabled {
+                                                    Color.clear.glassEffect(.regular, in: .circle)
+                                                } else {
+                                                    Circle().fill(.ultraThinMaterial)
+                                                }
+                                            }
+                                        )
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .contentShape(Circle())
+                                .accessibilityLabel("Add Deliverable")
+                            }
+                            .padding(.vertical, 2)
+        ) {
             ForEach(activeDeliverables) { deliverable in
                 let tint = color(for: deliverable.colorCode)
                 let radius: CGFloat = 12
@@ -334,6 +373,7 @@ struct DueTabView: View {
             }
         }
     }
+
 
     // MARK: - Completed Sheet (standard sheet version)
 
