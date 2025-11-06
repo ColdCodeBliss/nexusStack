@@ -23,7 +23,7 @@ struct MindMapTabView: View {
     @State private var nodeDragStart: [UUID: CGPoint] = [:]
 
     private let childRadius: CGFloat = 220
-    private let nodeColorOptions: [String] = ["red","blue","green","yellow","orange","purple","brown","teal","gray"]
+    private let nodeColorOptions: [String] = ["red","blue","green","yellow","orange","purple","brown","teal","gray", "black", "white"]
 
     @State private var showClearConfirm = false
     @State private var isTopToolbarCollapsed = false

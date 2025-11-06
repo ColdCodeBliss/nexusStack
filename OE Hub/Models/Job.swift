@@ -52,10 +52,10 @@ extension Job {
 
     /// Ordered palette used across the app. Index = visual tint index.
     enum ColorCode: String, CaseIterable {
-        case gray, red, blue, green, purple, orange, yellow, teal, brown
+        case gray, red, blue, green, purple, orange, yellow, teal, brown, black, white
 
         static let ordered: [ColorCode] = [
-            .gray, .red, .blue, .green, .purple, .orange, .yellow, .teal, .brown
+            .gray, .red, .blue, .green, .purple, .orange, .yellow, .teal, .brown, .black, .white
         ]
 
         static var defaultIndex: Int {

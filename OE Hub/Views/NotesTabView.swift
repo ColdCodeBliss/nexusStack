@@ -28,7 +28,7 @@ struct NotesTabView: View {
     var job: Job
 
     // MARK: - Precomputed constants
-    private let colors: [Color] = [.red, .blue, .green, .orange, .yellow, .purple, .brown, .teal]
+    private let colors: [Color] = [.red, .blue, .green, .orange, .yellow, .purple, .brown, .teal, .black, .white]
     private let gridColumns: [GridItem] = [GridItem(.flexible()), GridItem(.flexible())]
 
     // Bullet configuration (shared with Beta panel)
@@ -474,6 +474,8 @@ struct NotesTabView: View {
         case 5: return "Purple"
         case 6: return "Brown"
         case 7: return "Teal"
+        case 8: return "Black"
+        case 9: return "White"
         default: return "Green"
         }
     }
