@@ -19,6 +19,8 @@ struct JobDetailView: View {
     // Sheets
     @State private var showGitHubBrowser: Bool = false
     @State private var showConfluenceSheet: Bool = false
+    @State private var showHelpPanel: Bool = false
+
 
     // Style toggles
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
@@ -70,6 +72,17 @@ struct JobDetailView: View {
                     maxLinks: 5
                 )
             }
+        
+            .sheet(isPresented: Binding(
+                get: { showHelpPanel && !isBetaGlassEnabled },
+                set: { if !$0 { showHelpPanel = false } }
+            )) { HelpView() }
+            .overlay {
+                if showHelpPanel && isBetaGlassEnabled {
+                    HelpPanel(isPresented: $showHelpPanel).zIndex(20)
+                }
+            }
+
     }
 
     // MARK: - Split main content
@@ -138,19 +151,24 @@ struct JobDetailView: View {
     @ViewBuilder
     private var trailingButton: some View {
         switch selection {
-        case .due:
-            Button("Add Deliverable", systemImage: "plus") { addDeliverableTrigger &+= 1 }
-                .accessibilityLabel("Add Deliverable")
-
-        case .notes:
-            Button("Add Note", systemImage: "plus") { addNoteTrigger &+= 1 }
-                .accessibilityLabel("Add Note")
-
-        case .checklist:
-            Button("Add Item", systemImage: "plus") { addChecklistTrigger &+= 1 }
-                .accessibilityLabel("Add Checklist Item")
+        // Replace the old "Add ..." buttons with a single glassy Help button
+        case .due, .notes, .checklist:
+            Button {
+                showHelpPanel = true
+            } label: {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.headline)
+                    .padding(8)
+            }
+            .background(toolbarPillBackground)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().stroke(Color.white.opacity(isBetaGlassEnabled ? 0.10 : 0), lineWidth: 1)
+            )
+            .accessibilityLabel("Open Help")
 
         case .info:
+            // Keep Info's existing Confluence + GitHub pair
             HStack(spacing: 10) {
                 toolbarIconButton(assetName: "Confluence_icon", accessibility: "Open Confluence") {
                     showConfluenceSheet = true
@@ -164,6 +182,7 @@ struct JobDetailView: View {
             EmptyView()
         }
     }
+
 
     // MARK: - Toolbar helpers (glassy icon pill)
 
