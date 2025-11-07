@@ -5,9 +5,9 @@ struct SettingsPanel: View {
     @Binding var isPresented: Bool
 
     @AppStorage("isDarkMode") private var isDarkMode = false
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false   // Classic
-    @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false       // Real glass
+    @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false       // Real glass (iOS 26+)
     @AppStorage("betaWhiteGlowOpacity") private var betaWhiteGlowOpacity: Double = 0.60
+    @AppStorage("isTrueStackEnabled") private var isTrueStackEnabled = false
 
     @StateObject private var store = DonationStore()
 
@@ -49,26 +49,8 @@ struct SettingsPanel: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Toggle("Dark Mode", isOn: $isDarkMode)
 
-                                Toggle("Liquid Glass (Classic)", isOn:
-                                    Binding(
-                                        get: { isLiquidGlassEnabled },
-                                        set: { newValue in
-                                            isLiquidGlassEnabled = newValue
-                                            if newValue { isBetaGlassEnabled = false }
-                                        }
-                                    )
-                                )
-
                                 if #available(iOS 26.0, *) {
-                                    Toggle("Liquid Glass (Beta, iOS 26+)", isOn:
-                                        Binding(
-                                            get: { isBetaGlassEnabled },
-                                            set: { newValue in
-                                                isBetaGlassEnabled = newValue
-                                                if newValue { isLiquidGlassEnabled = false }
-                                            }
-                                        )
-                                    )
+                                    Toggle("Liquid Glass (Beta, iOS 26+)", isOn: $isBetaGlassEnabled)
                                 } else {
                                     Toggle("Liquid Glass (Beta, iOS 26+)", isOn: .constant(false))
                                         .disabled(true)
@@ -92,6 +74,12 @@ struct SettingsPanel: View {
                                     .padding(.top, 4)
                                     .transition(.opacity.combined(with: .move(edge: .top)))
                                 }
+
+                                if #available(iOS 26.0, *), isBetaGlassEnabled {
+                                    Toggle("True Stack (Card Deck UI)", isOn: $isTrueStackEnabled)
+                                        .tint(.blue)
+                                }
+
                             }
                             .padding(12)
                             .background(cardBackground)
@@ -141,7 +129,7 @@ struct SettingsPanel: View {
                             Text("About")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.secondary)
-                            Text(".nexusStack helps freelancers, teams, and OE professionals manage jobs, deliverables, and GitHub repo's efficiently.")
+                            Text(".nexusStack helps freelancers, teams, and IT professionals manage jobs, deliverables, and GitHub repo's efficiently.")
                                 .foregroundStyle(.secondary)
                                 .padding(12)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -164,13 +152,11 @@ struct SettingsPanel: View {
         }
     }
 
-    // Panel (outer) background: true Liquid Glass when available, else material
+    // Panel (outer) background: true Liquid Glass when available, else standard background
     @ViewBuilder
     private var panelBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 20))
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground))
         }
@@ -181,8 +167,6 @@ struct SettingsPanel: View {
     private var cardBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.clear, in: .rect(cornerRadius: 14))
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 14).fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 14).fill(Color(.secondarySystemBackground))
         }
@@ -192,7 +176,6 @@ struct SettingsPanel: View {
     @ViewBuilder
     private func donateButton(for product: Product) -> some View {
         let glassOn = isBetaGlassEnabled
-        let classicOn = isLiquidGlassEnabled && !glassOn
 
         Button {
             Task { await store.purchase(product) }
@@ -206,14 +189,12 @@ struct SettingsPanel: View {
             Group {
                 if #available(iOS 26.0, *), glassOn {
                     Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 12))
-                } else if classicOn {
-                    RoundedRectangle(cornerRadius: 12).fill(.ultraThinMaterial)
                 } else {
                     RoundedRectangle(cornerRadius: 12).fill(Color.blue.opacity(0.85))
                 }
             }
         )
-        .foregroundStyle((glassOn || classicOn) ? Color.primary : Color.white)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity((glassOn || classicOn) ? 0.08 : 0)))
+        .foregroundStyle(glassOn ? Color.primary : Color.white)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(glassOn ? 0.08 : 0)))
     }
 }

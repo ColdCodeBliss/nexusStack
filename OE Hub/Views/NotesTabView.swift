@@ -20,7 +20,6 @@ struct NotesTabView: View {
     @State private var editingColorIndex: Int = 0
 
     // Style toggles
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
     @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
 
     // Parent-driven trigger for the nav-bar “+”
@@ -29,7 +28,7 @@ struct NotesTabView: View {
     var job: Job
 
     // MARK: - Precomputed constants
-    private let colors: [Color] = [.red, .blue, .green, .orange, .yellow, .purple, .brown, .teal]
+    private let colors: [Color] = [.red, .blue, .green, .orange, .yellow, .purple, .brown, .teal, .black, .white]
     private let gridColumns: [GridItem] = [GridItem(.flexible()), GridItem(.flexible())]
 
     // Bullet configuration (shared with Beta panel)
@@ -50,16 +49,57 @@ struct NotesTabView: View {
     }
 
     var body: some View {
-        ScrollView {
-            makeGrid(notes: sortedNotes)
-                .padding()
+        VStack(spacing: 0) {
+            // Header row: "Notes" + glassy "+"
+            HStack(spacing: 8) {
+                Text("Notes")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    // Opens the same compose flow you already use
+                    prepareNewNote()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.semibold))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Group {
+                                if #available(iOS 26.0, *), isBetaGlassEnabled {
+                                    Color.clear.glassEffect(.regular, in: .circle)
+                                } else {
+                                    Circle().fill(.ultraThinMaterial)
+                                }
+                            }
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .contentShape(Circle())
+                .accessibilityLabel("Add Note")
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
+            // Your existing grid of notes
+            ScrollView {
+                makeGrid(notes: sortedNotes)
+                    .padding()
+            }
         }
+        // Keep your existing editors exactly as-is
         .sheet(isPresented: nonBetaSheetIsPresented) { nonBetaSheet }
         .overlay { betaOverlay }
-        .navigationTitle("Notes")
+        .navigationTitle("Notes") // harmless; will be hidden by our inline header if shown in a sheet
         .animation(.default, value: job.notes.count)
         .onChange(of: addNoteTrigger) { _, _ in prepareNewNote() }
     }
+
 
     // MARK: - Builders
 
@@ -181,7 +221,7 @@ struct NotesTabView: View {
         }
     }
 
-    // MARK: - Beta overlay (unchanged)
+    // MARK: - Beta overlay
     @ViewBuilder
     private var betaOverlay: some View {
         if (isAddingNote || isEditingNote) && isBetaGlassEnabled {
@@ -219,7 +259,7 @@ struct NotesTabView: View {
         let idx = safeIndex(note.colorIndex)
         let tint = colors[idx]
         let fg: Color = .black
-        let isGlass = (isLiquidGlassEnabled || isBetaGlassEnabled)
+        let isGlass = isBetaGlassEnabled
         let radius: CGFloat = 16
 
         return VStack(alignment: .leading, spacing: 8) {
@@ -259,20 +299,8 @@ struct NotesTabView: View {
                     )
                     .blendMode(.plusLighter)
             }
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(tint.opacity(0.55)))
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(LinearGradient(
-                            colors: [Color.white.opacity(0.18), .clear],
-                            startPoint: .topTrailing,
-                            endPoint: .bottomLeading
-                        ))
-                        .blendMode(.plusLighter)
-                )
         } else {
+            // Standard (non-Beta): solid tint gradient
             RoundedRectangle(cornerRadius: radius, style: .continuous).fill(tint.gradient)
         }
     }
@@ -446,6 +474,8 @@ struct NotesTabView: View {
         case 5: return "Purple"
         case 6: return "Brown"
         case 7: return "Teal"
+        case 8: return "Black"
+        case 9: return "White"
         default: return "Green"
         }
     }

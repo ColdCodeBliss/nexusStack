@@ -21,7 +21,6 @@ struct ConfluenceLinksView: View {
     @AppStorage private var linksJSON: String
 
     // Style flags (mirror SettingsPanel / JobDetailView)
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false   // Classic
     @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false   // Real glass (iOS 26+)
     @AppStorage("betaWhiteGlowOpacity") private var betaWhiteGlowOpacity: Double = 0.60
 
@@ -220,16 +219,6 @@ struct ConfluenceLinksView: View {
                 Button("Add Link") { addLink() }
                     .buttonStyle(.glass)
                     .disabled(!isValidURL(normalized(inputURL)))
-            } else if isLiquidGlassEnabled {
-                Button("Add Link") { addLink() }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(.ultraThinMaterial)
-                    )
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.1)))
-                    .disabled(!isValidURL(normalized(inputURL)))
             } else {
                 Button("Add Link") { addLink() }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -244,14 +233,12 @@ struct ConfluenceLinksView: View {
         }
     }
 
-    // MARK: - Backgrounds (same approach as SettingsPanel)
+    // MARK: - Backgrounds (aligned with SettingsPanel)
 
     @ViewBuilder
     private var panelBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 20))
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground))
         }
@@ -261,8 +248,6 @@ struct ConfluenceLinksView: View {
     private var cardBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.clear, in: .rect(cornerRadius: 14))
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 14).fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 14).fill(Color(.secondarySystemBackground))
         }
@@ -272,8 +257,6 @@ struct ConfluenceLinksView: View {
     private var cardRowBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.white.opacity(0.06) // faint lift over glass
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 10).fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 10).fill(Color(.tertiarySystemBackground))
         }
@@ -283,8 +266,10 @@ struct ConfluenceLinksView: View {
         @Environment(\.colorScheme) private var scheme
         let opacity: Double
         func body(content: Content) -> some View {
-            content.shadow(color: scheme == .dark ? .white.opacity(opacity) : .clear,
-                           radius: 10, x: 0, y: 0)
+            content.shadow(
+                color: scheme == .dark ? .white.opacity(opacity) : .clear,
+                radius: 10, x: 0, y: 0
+            )
         }
     }
 

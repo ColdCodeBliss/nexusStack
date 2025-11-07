@@ -4,8 +4,7 @@ import SwiftData
 struct JobRowView: View {
     let job: Job
 
-    // Classic (fallback) and Beta (real Liquid Glass) toggles
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
+    // Beta (real Liquid Glass) toggle
     @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
     @Environment(\.colorScheme) private var colorScheme
 
@@ -16,7 +15,7 @@ struct JobRowView: View {
     private let radius: CGFloat = 20
 
     var body: some View {
-        let tint = color(for: job.colorCode)
+        let tint = color(for: job.effectiveColorIndex)
 
         VStack(alignment: .leading, spacing: 8) {
             Text(job.title)
@@ -42,7 +41,7 @@ struct JobRowView: View {
         .padding(.vertical, 2)
     }
 
-    // MARK: - Backgrounds (Beta → real Liquid Glass; Classic → material; else solid)
+    // MARK: - Backgrounds (Beta → real Liquid Glass; else solid)
 
     @ViewBuilder
     private func cardBackground(tint: Color) -> some View {
@@ -65,25 +64,6 @@ struct JobRowView: View {
                     )
                     .blendMode(.plusLighter)
             }
-        } else if isLiquidGlassEnabled {
-            // 🌈 Classic glassy fallback (SDK-safe)
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(tint.opacity(0.55))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.15), .clear],
-                                startPoint: .topTrailing,
-                                endPoint: .bottomLeading
-                            )
-                        )
-                        .blendMode(.plusLighter)
-                )
         } else {
             // 🎨 Original solid/tinted look
             RoundedRectangle(cornerRadius: radius, style: .continuous)
@@ -92,7 +72,7 @@ struct JobRowView: View {
     }
 
     private var borderColor: Color {
-        (isBetaGlassEnabled || isLiquidGlassEnabled)
+        (isBetaGlassEnabled)
         ? .white.opacity(0.10)
         : .black.opacity(0.06)
     }
@@ -103,13 +83,13 @@ struct JobRowView: View {
             let clamped = max(0.0, min(betaWhiteGlowOpacity, 1.0)) // safety clamp
             return Color.white.opacity(clamped)
         }
-        return (isBetaGlassEnabled || isLiquidGlassEnabled)
+        return (isBetaGlassEnabled)
             ? Color.black.opacity(0.25)
             : Color.black.opacity(0.15)
     }
 
-    private var shadowRadius: CGFloat { (isBetaGlassEnabled || isLiquidGlassEnabled) ? 14 : 5 }
-    private var shadowY: CGFloat { (isBetaGlassEnabled || isLiquidGlassEnabled) ? 8 : 0 }
+    private var shadowRadius: CGFloat { (isBetaGlassEnabled) ? 14 : 5 }
+    private var shadowY: CGFloat { (isBetaGlassEnabled) ? 8 : 0 }
 
     // MARK: - Helpers
 

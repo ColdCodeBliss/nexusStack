@@ -1,8 +1,6 @@
 //
 //  ColorPickerView.swift
-//  OE Hub
-//
-//  Created by Ryan Bliss on 9/5/25.
+//  nexusStack / OE Hub
 //
 
 import SwiftUI
@@ -12,8 +10,8 @@ struct ColorPickerView: View {
     @Binding var selectedItem: Any?
     @Binding var isPresented: Bool
 
-    // Keep your available palette; reuses Utilities.color(for:)
-    let colors: [String] = ["red", "blue", "green", "yellow", "orange", "purple", "brown", "teal", "gray"]
+    // Use Job’s canonical palette order so indices match everywhere.
+    private let palette = Job.ColorCode.ordered.map { $0.rawValue } // ["gray","red","blue",...]
 
     @Environment(\.modelContext) private var modelContext
     @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
@@ -22,10 +20,10 @@ struct ColorPickerView: View {
         NavigationStack {
             VStack(spacing: 20) {
                 Text("Select Color")
-                    .font(.title2).bold()   // ← fixed extra parenthesis
+                    .font(.title2).bold()
 
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 10) {
-                    ForEach(colors, id: \.self) { colorName in
+                    ForEach(palette, id: \.self) { colorName in
                         let tint = color(for: colorName)
                         let isSelected = isCurrentlySelected(colorName)
 
@@ -50,17 +48,16 @@ struct ColorPickerView: View {
         }
     }
 
-    // MARK: - Chip View (SDK-safe “glassy” look without .glassEffect)
+    // MARK: - Chip View (glassy when Liquid Glass is ON)
 
     @ViewBuilder
     private func chipView(tint: Color, isSelected: Bool, colorName: String) -> some View {
-        // When “Liquid Glass” is enabled, use material + tint overlay to emulate a glass chip.
         let chip = Group {
             if isLiquidGlassEnabled {
                 Circle()
-                    .fill(.ultraThinMaterial)                  // blurred, glassy base
-                    .overlay(Circle().fill(tint.opacity(0.65)))// tinted glaze
-                    .overlay(                                   // subtle highlight for depth
+                    .fill(.ultraThinMaterial)
+                    .overlay(Circle().fill(tint.opacity(0.65)))
+                    .overlay(
                         Circle().fill(
                             LinearGradient(
                                 colors: [Color.white.opacity(0.25), .clear],
@@ -71,7 +68,6 @@ struct ColorPickerView: View {
                         .blendMode(.plusLighter)
                     )
             } else {
-                // Original solid chip
                 Circle().fill(tint)
             }
         }
@@ -87,23 +83,31 @@ struct ColorPickerView: View {
         chip
     }
 
-    // MARK: - Helpers
+    // MARK: - Apply selection
 
     private func apply(_ colorName: String) {
+        // Map the tapped name to Job’s canonical index
+        let idx = Job.ColorCode.index(for: colorName)
+
         if let job = selectedItem as? Job {
-            job.colorCode = colorName
+            // ✅ Unified write: updates both colorIndex and colorCode
+            job.setColor(index: idx)
         } else if let checklistItem = selectedItem as? ChecklistItem {
-            // NOTE: Your app uses color names for priority; we keep that behavior.
+            // Keep existing semantics (priority stored as capitalized name)
             checklistItem.priority = colorName.capitalized
         } else if let deliverable = selectedItem as? Deliverable {
+            // Keep existing semantics for deliverables
             deliverable.colorCode = colorName
         }
         try? modelContext.save()
     }
 
     private func isCurrentlySelected(_ colorName: String) -> Bool {
+        let idx = Job.ColorCode.index(for: colorName)
+
         if let job = selectedItem as? Job {
-            return (job.colorCode?.lowercased() ?? "") == colorName
+            // ✅ Compare against unified index
+            return job.effectiveColorIndex == idx
         } else if let checklistItem = selectedItem as? ChecklistItem {
             return checklistItem.priority.lowercased() == colorName
         } else if let deliverable = selectedItem as? Deliverable {

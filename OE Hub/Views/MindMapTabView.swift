@@ -4,7 +4,6 @@ import UIKit
 
 struct MindMapTabView: View {
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
     @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
 
     var job: Job
@@ -23,9 +22,8 @@ struct MindMapTabView: View {
     @State private var panStart: CGSize = .zero
     @State private var nodeDragStart: [UUID: CGPoint] = [:]
 
-
     private let childRadius: CGFloat = 220
-    private let nodeColorOptions: [String] = ["red","blue","green","yellow","orange","purple","brown","teal","gray"]
+    private let nodeColorOptions: [String] = ["red","blue","green","yellow","orange","purple","brown","teal","gray", "black", "white"]
 
     @State private var showClearConfirm = false
     @State private var isTopToolbarCollapsed = false
@@ -38,25 +36,21 @@ struct MindMapTabView: View {
 
     /// How far the whole toolbar slides right when collapsed
     private var slideDistance: CGFloat {
-        if isPad && isLandscape { return 134 }     // smaller shove on iPad-landscape so it doesn't disappear
+        if isPad && isLandscape { return 134 }
         return isLandscape ? 156 : 94
     }
 
     /// Right padding when expanded (positive pulls inward, negative pushes off-screen)
     private var expandedTrailingPad: CGFloat {
-        if isPad && isLandscape { return 12 }      // keep capsule fully on-screen in iPad-landscape
+        if isPad && isLandscape { return 12 }
         return isLandscape ? -55 : 9
     }
 
     /// Right padding when collapsed
     private var collapsedTrailingPad: CGFloat {
-        if isPad && isLandscape { return 0 }       // avoid hiding the capsule completely
+        if isPad && isLandscape { return 0 }
         return isLandscape ? -40 : -40
     }
-
-    
-    
-    
 
     // ✅ Share state: present sheet only when we have a URL
     private struct ShareItem: Identifiable { let id = UUID(); let url: URL }
@@ -90,17 +84,13 @@ struct MindMapTabView: View {
                     center(on: canvasCenter)
                 }
 
-                // Make the first drag use the current offset as its baseline.
-                // Do it on the next runloop tick in case `center` animates/updates state.
                 DispatchQueue.main.async {
                     panStart = offset
                 }
             }
-
-            .onChange(of: scale) { oldValue, newValue in
-                panStart = offset   // keep pan baseline in sync with the new zoom
+            .onChange(of: scale) { _, _ in
+                panStart = offset
             }
-
         }
         .navigationTitle("Mind Map")
 
@@ -163,9 +153,9 @@ struct MindMapTabView: View {
             .padding(.top, 8)
         }
 
-        // Glass confirmation overlay (unchanged)
+        // Glass confirmation overlay (Beta only)
         .overlay {
-            if showAutoArrangeConfirm && (isBetaGlassEnabled || isLiquidGlassEnabled) {
+            if showAutoArrangeConfirm && isBetaGlassEnabled {
                 AutoArrangeConfirmPanel(
                     isPresented: $showAutoArrangeConfirm,
                     isBeta: isBetaGlassEnabled,
@@ -175,11 +165,11 @@ struct MindMapTabView: View {
             }
         }
 
-        // Fallback system alert (unchanged)
+        // Fallback system alert when Beta OFF
         .alert(
             "Re-arrange Mind Map?",
             isPresented: Binding(
-                get: { showAutoArrangeConfirm && !(isBetaGlassEnabled || isLiquidGlassEnabled) },
+                get: { showAutoArrangeConfirm && !isBetaGlassEnabled },
                 set: { if !$0 { showAutoArrangeConfirm = false } }
             )
         ) {
@@ -233,7 +223,7 @@ struct MindMapTabView: View {
             ForEach(job.mindNodes) { node in
                 NodeBubble(node: node,
                            isSelected: node.id == selected?.id,
-                           glassOn: (isLiquidGlassEnabled || isBetaGlassEnabled),
+                           glassOn: isBetaGlassEnabled,
                            focused: $focusedNodeID)
                     .position(x: node.x, y: node.y)
                     .highPriorityGesture(nodeDragGesture(for: node))
@@ -262,7 +252,7 @@ struct MindMapTabView: View {
             }
 
             ForEach(job.mindNodes) { node in
-                NodeBubbleSnapshot(node: node, glassOn: (isLiquidGlassEnabled || isBetaGlassEnabled))
+                NodeBubbleSnapshot(node: node, glassOn: isBetaGlassEnabled)
                     .position(x: node.x, y: node.y)
             }
         }
@@ -270,14 +260,14 @@ struct MindMapTabView: View {
         .background(Color.clear)
     }
 
-    // MARK: - Bottom controls (unchanged)
+    // MARK: - Bottom controls
     private var controlsBar: some View {
         HStack(spacing: 10) {
             Button { zoom(by: -0.15) } label: { controlIcon("minus.magnifyingglass") }
                 .keyboardShortcut("-", modifiers: [.command])
 
             Button { zoom(by:  0.15) } label: { controlIcon("plus.magnifyingglass") }
-                .keyboardShortcut("=", modifiers: [.command]) // standard for zoom-in
+                .keyboardShortcut("=", modifiers: [.command])
 
             Button { centerOnRoot() } label: { controlIcon("target") }
                 .keyboardShortcut("0", modifiers: [.command])
@@ -341,22 +331,20 @@ struct MindMapTabView: View {
             .contentShape(Rectangle())
     }
 
-    // MARK: - Gestures / actions (unchanged)
+    // MARK: - Gestures / actions
     private var panGesture: some Gesture {
-        DragGesture(minimumDistance: 12)          // require a more intentional drag
+        DragGesture(minimumDistance: 12)
             .onChanged { value in
-                let sensitivity: CGFloat = 0.25   // ↓ smaller = slower panning
+                let sensitivity: CGFloat = 0.25
                 let dx = (value.translation.width  * sensitivity) / max(scale, 0.001)
                 let dy = (value.translation.height * sensitivity) / max(scale, 0.001)
                 offset = CGSize(width: panStart.width + dx,
                                 height: panStart.height + dy)
             }
             .onEnded { _ in
-                panStart = offset                  // lock in new baseline
+                panStart = offset
             }
     }
-
-
 
     private var zoomGesture: some Gesture {
         MagnificationGesture()
@@ -371,14 +359,12 @@ struct MindMapTabView: View {
     private func nodeDragGesture(for node: MindNode) -> some Gesture {
         DragGesture(minimumDistance: 1)
             .onChanged { v in
-                // Record the node’s starting point once, at the beginning of the drag
                 if nodeDragStart[node.id] == nil {
                     nodeDragStart[node.id] = CGPoint(x: node.x, y: node.y)
                 }
-                let start = nodeDragStart[node.id]!  // safe: set just above
+                let start = nodeDragStart[node.id]!
 
-                // Apply a gentle sensitivity factor and respect zoom
-                let sensitivity: CGFloat = 0.35  // ↓ smaller = slower drag
+                let sensitivity: CGFloat = 0.35
                 let dx = (v.translation.width  * sensitivity) / max(scale, 0.001)
                 let dy = (v.translation.height * sensitivity) / max(scale, 0.001)
 
@@ -390,7 +376,6 @@ struct MindMapTabView: View {
                 try? modelContext.save()
             }
     }
-
 
     private func ensureRoot() {
         if job.mindNodes.contains(where: { $0.isRoot }) { return }
@@ -482,7 +467,6 @@ struct MindMapTabView: View {
 
     private func shareMindMap() {
         if let url = exportMindMapPDF(maxDimension: 2200) {
-            // Present only once the URL is ready
             shareItem = ShareItem(url: url)
         } else {
             print("⚠️ Mind map export failed; no file to share.")
@@ -495,7 +479,6 @@ struct MindMapTabView: View {
         let scaleFactor = exportSide / canvasSize
         let fullSize = CGSize(width: canvasSize, height: canvasSize)
 
-        // Try ImageRenderer first
         let exportView = snapshotContent
             .frame(width: fullSize.width, height: fullSize.height)
             .background(Color.clear)
@@ -505,12 +488,10 @@ struct MindMapTabView: View {
 
         var snapshot: UIImage? = swiftUIRenderer.uiImage
 
-        // Fallback: render via a HostingController if ImageRenderer fails (e.g. platform text issues)
         if snapshot == nil {
             let host = UIHostingController(rootView: exportView)
             host.view.bounds = CGRect(origin: .zero, size: fullSize)
             host.view.backgroundColor = .clear
-            // Ensure layout before rendering the layer
             host.view.setNeedsLayout()
             host.view.layoutIfNeeded()
 
@@ -519,7 +500,6 @@ struct MindMapTabView: View {
                 host.view.layer.render(in: ctx.cgContext)
             }
 
-            // Downscale to requested size if needed
             if scaleFactor != 1.0, let img = snapshot {
                 let scaledSize = CGSize(width: fullSize.width * scaleFactor, height: fullSize.height * scaleFactor)
                 let scaledRenderer = UIGraphicsImageRenderer(size: scaledSize)
@@ -531,7 +511,6 @@ struct MindMapTabView: View {
 
         guard let image = snapshot else { return nil }
 
-        // Make one-page PDF from the snapshot image
         let pageRect = CGRect(origin: .zero, size: image.size)
         let pdfRenderer = UIGraphicsPDFRenderer(bounds: pageRect, format: UIGraphicsPDFRendererFormat())
         let pdfData = pdfRenderer.pdfData { ctx in
@@ -554,11 +533,8 @@ struct MindMapTabView: View {
     }
 }
 
-// === AutoArrangeConfirmPanel, NodeBubble, NodeBubbleSnapshot, ActivityView remain unchanged ===
-// (Keep your existing implementations below)
+// === AutoArrangeConfirmPanel, NodeBubble, NodeBubbleSnapshot, ActivityView remain mostly unchanged ===
 
-
-// MARK: - Auto-Arrange (unchanged)
 private extension MindMapTabView {
     func autoArrangeTree() {
         guard let root = job.mindNodes.first(where: { $0.isRoot }) else { return }
@@ -633,7 +609,7 @@ private extension MindMapTabView {
     }
 }
 
-// MARK: - Glass confirmation bubble (unchanged)
+// MARK: - Glass confirmation bubble (Beta or fallback)
 private struct AutoArrangeConfirmPanel: View {
     @Binding var isPresented: Bool
     var isBeta: Bool
@@ -778,20 +754,8 @@ private struct NodeBubble: View {
                     )
                     .blendMode(.plusLighter)
             }
-        } else if glassOn {
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(tint.opacity(0.55))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(LinearGradient(colors: [Color.white.opacity(0.18), .clear],
-                                             startPoint: .topTrailing, endPoint: .bottomLeading))
-                        .blendMode(.plusLighter)
-                )
         } else {
+            // Standard (non-Beta): solid tint gradient bubble
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .fill(tint.gradient)
         }
@@ -867,19 +831,6 @@ private struct NodeBubbleSnapshot: View {
                     )
                     .blendMode(.plusLighter)
             }
-        } else if glassOn {
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(tint.opacity(0.55))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(LinearGradient(colors: [Color.white.opacity(0.18), .clear],
-                                             startPoint: .topTrailing, endPoint: .bottomLeading))
-                        .blendMode(.plusLighter)
-                )
         } else {
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .fill(tint.gradient)
@@ -897,7 +848,6 @@ private struct ActivityView: UIViewControllerRepresentable {
                                           applicationActivities: applicationActivities)
 
         if let pop = vc.popoverPresentationController {
-            // Center-bottom anchor as a safe default on iPad
             pop.sourceRect = CGRect(x: UIScreen.main.bounds.midX,
                                     y: UIScreen.main.bounds.maxY - 1,
                                     width: 0, height: 0)

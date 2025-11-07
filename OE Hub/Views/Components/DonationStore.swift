@@ -12,8 +12,9 @@ import StoreKit
 @MainActor
 final class DonationStore: ObservableObject {
     // ⬅️ Replace these with your real Product IDs from App Store Connect
-    // Recommended naming: <bundleID>.tip.5, .tip.10, .tip.20
+    // Recommended naming: <bundleID> .tip.2, tip.5, .tip.10, .tip.20
     private let productIDs: Set<String> = [
+        "com.coldcodebliss.nexusstack.tip.2",
         "com.coldcodebliss.nexusstack.tip.5",
         "com.coldcodebliss.nexusstack.tip.10",
         "com.coldcodebliss.nexusstack.tip.20"

@@ -11,9 +11,8 @@ struct InfoTabView: View {
     var job: Job
     @Environment(\.modelContext) private var modelContext
 
-    // Settings toggles
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
-    @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
+    // Settings toggle (Beta only)
+    @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
 
     // Local editor state
     @State private var email: String = ""
@@ -61,11 +60,11 @@ struct InfoTabView: View {
                         loadJobInfo()
                         showEditForm = true
                     }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(.blue.opacity(0.8))
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(.blue.opacity(0.8))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,13 +72,11 @@ struct InfoTabView: View {
                 .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                        .stroke((isBetaGlassEnabled || isLiquidGlassEnabled) ? Color.white.opacity(0.10)
-                                                                             : Color.white.opacity(0.20), lineWidth: 1)
+                        .stroke(isBetaGlassEnabled ? Color.white.opacity(0.10) : Color.white.opacity(0.20), lineWidth: 1)
                 )
-                .shadow(color: (isBetaGlassEnabled || isLiquidGlassEnabled) ? .black.opacity(0.25)
-                                                                            : .black.opacity(0.15),
-                        radius: (isBetaGlassEnabled || isLiquidGlassEnabled) ? 14 : 5,
-                        x: 0, y: (isBetaGlassEnabled || isLiquidGlassEnabled) ? 8 : 0)
+                .shadow(color: isBetaGlassEnabled ? .black.opacity(0.25) : .black.opacity(0.15),
+                        radius: isBetaGlassEnabled ? 14 : 5,
+                        x: 0, y: isBetaGlassEnabled ? 8 : 0)
                 .padding(.horizontal)
             }
         }
@@ -198,24 +195,6 @@ struct InfoTabView: View {
                     )
                     .blendMode(.plusLighter)
             }
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                        .fill(tint.opacity(0.55))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.18), .clear],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .blendMode(.plusLighter)
-                )
         } else {
             RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
                 .fill(tint)

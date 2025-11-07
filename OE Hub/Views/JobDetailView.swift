@@ -19,12 +19,23 @@ struct JobDetailView: View {
     // Sheets
     @State private var showGitHubBrowser: Bool = false
     @State private var showConfluenceSheet: Bool = false
+    @State private var showHelpPanel: Bool = false
 
-    // Style toggles (match rest of app)
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
-    @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
+
+    // Style toggles
+    @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
 
     var job: Job
+
+    // 🔒 Keep the caller’s tab around and apply it exactly once.
+    private let startTab: DetailTab
+    @State private var appliedInitial = false
+
+    init(job: Job, initialTab: DetailTab = .due) {
+        self.job = job
+        self.startTab = initialTab
+        _selection = State(initialValue: initialTab) // start on the requested tab
+    }
 
     var body: some View {
         content
@@ -33,8 +44,15 @@ struct JobDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { trailingButton }
             }
+            // Make sure the initial tab is applied exactly once on presentation.
+            .onAppear {
+                if !appliedInitial {
+                    selection = startTab
+                    appliedInitial = true
+                }
+            }
 
-            // GitHub: sheet for Classic/Standard, full-screen overlay for Beta
+            // GitHub: sheet for Standard, full-screen overlay for Beta glass
             .sheet(isPresented: Binding(
                 get: { !isBetaGlassEnabled && showGitHubBrowser },
                 set: { if !$0 { showGitHubBrowser = false } }
@@ -48,13 +66,23 @@ struct JobDetailView: View {
                 GitHubBrowserView(recentKey: "recentRepos.\(job.repoBucketKey)")
             }
 
-            /// Confluence links (present as full-screen overlay so the panel can be real glass)
             .fullScreenCover(isPresented: $showConfluenceSheet) {
                 ConfluenceLinksView(
                     storageKey: "confluenceLinks.\(job.repoBucketKey)",
                     maxLinks: 5
                 )
             }
+        
+            .sheet(isPresented: Binding(
+                get: { showHelpPanel && !isBetaGlassEnabled },
+                set: { if !$0 { showHelpPanel = false } }
+            )) { HelpView() }
+            .overlay {
+                if showHelpPanel && isBetaGlassEnabled {
+                    HelpPanel(isPresented: $showHelpPanel).zIndex(20)
+                }
+            }
+
     }
 
     // MARK: - Split main content
@@ -68,6 +96,9 @@ struct JobDetailView: View {
             notesTab
             infoTab
         }
+        // 🆔 Encourage SwiftUI to rebuild tab presentation when the caller’s
+        // requested initial tab changes between openings.
+        .id(startTab)
     }
 
     // MARK: - Individual tabs
@@ -120,20 +151,24 @@ struct JobDetailView: View {
     @ViewBuilder
     private var trailingButton: some View {
         switch selection {
-        case .due:
-            Button("Add Deliverable", systemImage: "plus") { addDeliverableTrigger &+= 1 }
-                .accessibilityLabel("Add Deliverable")
-
-        case .notes:
-            Button("Add Note", systemImage: "plus") { addNoteTrigger &+= 1 }
-                .accessibilityLabel("Add Note")
-
-        case .checklist:
-            Button("Add Item", systemImage: "plus") { addChecklistTrigger &+= 1 }
-                .accessibilityLabel("Add Checklist Item")
+        // Replace the old "Add ..." buttons with a single glassy Help button
+        case .due, .notes, .checklist:
+            Button {
+                showHelpPanel = true
+            } label: {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.headline)
+                    .padding(8)
+            }
+            .background(toolbarPillBackground)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().stroke(Color.white.opacity(isBetaGlassEnabled ? 0.10 : 0), lineWidth: 1)
+            )
+            .accessibilityLabel("Open Help")
 
         case .info:
-            // Confluence (left) + GitHub (right) with glassy pills (Beta/Classic)
+            // Keep Info's existing Confluence + GitHub pair
             HStack(spacing: 10) {
                 toolbarIconButton(assetName: "Confluence_icon", accessibility: "Open Confluence") {
                     showConfluenceSheet = true
@@ -148,6 +183,7 @@ struct JobDetailView: View {
         }
     }
 
+
     // MARK: - Toolbar helpers (glassy icon pill)
 
     private func toolbarIconButton(assetName: String, accessibility: String, action: @escaping () -> Void) -> some View {
@@ -157,13 +193,13 @@ struct JobDetailView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 18, height: 18)
-                .padding(8) // room for the pill
+                .padding(8)
                 .accessibilityLabel(accessibility)
         }
         .background(toolbarPillBackground)
         .clipShape(Capsule())
         .overlay(
-            Capsule().stroke(Color.white.opacity((isBetaGlassEnabled || isLiquidGlassEnabled) ? 0.10 : 0), lineWidth: 1)
+            Capsule().stroke(Color.white.opacity(isBetaGlassEnabled ? 0.10 : 0), lineWidth: 1)
         )
     }
 
@@ -171,8 +207,6 @@ struct JobDetailView: View {
     private var toolbarPillBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.regular, in: .capsule)
-        } else if isLiquidGlassEnabled {
-            Capsule().fill(.ultraThinMaterial)
         } else {
             Color.clear
         }

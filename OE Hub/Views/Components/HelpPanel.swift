@@ -3,7 +3,6 @@ import SwiftUI
 struct HelpPanel: View {
     @Binding var isPresented: Bool
 
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false   // Classic
     @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false   // Real glass (iOS 26+)
 
     var body: some View {
@@ -98,7 +97,7 @@ struct HelpPanel: View {
                                 tipRow(icon: "paintbrush", title: "Colors",
                                        text: "Use swipe → Color to tint deliverables. Glass style honors tints.")
                                 tipRow(icon: "gear", title: "Appearance",
-                                       text: "Settings → switch between Classic Liquid Glass and Beta Liquid Glass (iOS 26+).")
+                                       text: "Settings → switch between Liquid Glass (iOS 26+) and TrueStackDeckView.")
                             }
                         }
                     }
@@ -121,9 +120,8 @@ struct HelpPanel: View {
     private var panelBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 20))
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial)
-        } else {
+        }
+        else {
             RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground))
         }
     }
@@ -143,8 +141,6 @@ struct HelpPanel: View {
     private var cardBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.clear, in: .rect(cornerRadius: 14))
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 14).fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 14).fill(Color(.secondarySystemBackground))
         }

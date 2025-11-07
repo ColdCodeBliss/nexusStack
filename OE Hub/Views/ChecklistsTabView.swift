@@ -3,15 +3,20 @@ import SwiftData
 
 struct ChecklistsTabView: View {
     @Binding var newChecklistItem: String
-    @Binding var addChecklistTrigger: Int          // ⬅️ NEW: nav-bar “+” trigger from parent
+    @Binding var addChecklistTrigger: Int          // nav-bar “+” trigger from parent
     var job: Job
 
     @Environment(\.modelContext) private var modelContext
+    @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
+
     @State private var isCompletedSectionExpanded: Bool = false
     @State private var showAddChecklistForm: Bool = false
     @State private var selectedChecklistItem: ChecklistItem? = nil
     @State private var showColorPicker = false
     @State private var showClearConfirmation = false
+
+    // Match the DueTabView top bump so the inline sheet doesn’t clip
+    private let formTopInset: CGFloat = 12
 
     // Precompute filtered arrays to keep indices stable & avoid repeated work
     private var activeItems: [ChecklistItem]   { job.checklistItems.filter { !$0.isCompleted } }
@@ -19,15 +24,14 @@ struct ChecklistsTabView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // ⬇️ Removed the big "Add Checklist Item" bubble button
-
+            // Inline add form (shown via header + button OR toolbar trigger)
             if showAddChecklistForm {
                 checklistForm
+                    .padding(.top, formTopInset) // ← bump down to avoid clipping
             }
 
             checklistsList
         }
-        .background(Gradient(colors: [.blue, .purple]).opacity(0.1))
         .onAppear { showAddChecklistForm = false }
         .sheet(isPresented: $showColorPicker) {
             ColorPickerView(
@@ -102,7 +106,41 @@ struct ChecklistsTabView: View {
     @ViewBuilder
     private var checklistsList: some View {
         List {
-            Section(header: Text("Active Checklists")) {
+            // Active with glassy "+" button in the header (matches Deliverables/Notes)
+            Section(
+                header:
+                    HStack(spacing: 8) {
+                        Text("Active Checklists")
+                            .font(.headline)
+
+                        Spacer()
+
+                        Button {
+                            newChecklistItem = ""
+                            withAnimation { showAddChecklistForm = true }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.headline.weight(.semibold))
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    Group {
+                                        if #available(iOS 26.0, *), isBetaGlassEnabled {
+                                            Color.clear.glassEffect(.regular, in: .circle)
+                                        } else {
+                                            Circle().fill(.ultraThinMaterial)
+                                        }
+                                    }
+                                )
+                                .overlay(
+                                    Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Circle())
+                        .accessibilityLabel("Add Checklist Item")
+                    }
+                    .padding(.vertical, 2)
+            ) {
                 ForEach(activeItems) { item in
                     HStack {
                         Circle()
@@ -146,6 +184,7 @@ struct ChecklistsTabView: View {
                 }
             }
 
+            // Completed (collapsible)
             Section(
                 header:
                     HStack {

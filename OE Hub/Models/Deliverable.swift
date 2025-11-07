@@ -33,7 +33,7 @@ final class Deliverable {
 extension Deliverable {
     /// Mirrors your palette in a type-safe way, while still storing a String.
     enum ColorCode: String, CaseIterable {
-        case gray, red, blue, green, purple, orange, yellow, teal, brown
+        case gray, red, blue, green, purple, orange, yellow, teal, brown, black, white
     }
 
     /// Supported reminder offsets (kept in sync with your UI).

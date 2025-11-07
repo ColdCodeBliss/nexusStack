@@ -29,9 +29,9 @@ struct HomeView: View {
     @State private var showSettings = false
     @State private var showHelp = false
 
-
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
+    @AppStorage("isTrueStackEnabled") private var isTrueStackEnabled = false
 
     // Existing hero metrics (used on iPhone flow only)
     private let heroLogoHeight: CGFloat = 120   // logo size
@@ -50,13 +50,20 @@ struct HomeView: View {
     }
 
     var body: some View {
-        // Branch by size class: regular = iPad (split), compact = iPhone (existing flow)
-        if hSize == .regular {
-            iPadSplitView
+        // ✅ STEP 6: When Beta Glass *and* True Stack are ON (iOS 26+),
+        //            swap the home UI for the new Card Deck host.
+        if #available(iOS 26.0, *), isBetaGlassEnabled && isTrueStackEnabled {
+            TrueStackDeckHost(jobs: jobs)
                 .preferredColorScheme(isDarkMode ? .dark : .light)
         } else {
-            iPhoneStackView
-                .preferredColorScheme(isDarkMode ? .dark : .light)
+            // Branch by size class: regular = iPad (split), compact = iPhone (existing flow)
+            if hSize == .regular {
+                iPadSplitView
+                    .preferredColorScheme(isDarkMode ? .dark : .light)
+            } else {
+                iPhoneStackView
+                    .preferredColorScheme(isDarkMode ? .dark : .light)
+            }
         }
     }
 
@@ -267,6 +274,20 @@ struct HomeView: View {
                     .zIndex(2)
             }
         }
+        // Help as sheet when Beta OFF
+        .sheet(isPresented: Binding(
+            get: { showHelp && !isBetaGlassEnabled },
+            set: { if !$0 { showHelp = false } }
+        )) {
+            HelpView()
+        }
+        // Help as floating glass panel when Beta ON
+        .overlay {
+            if showHelp && isBetaGlassEnabled {
+                HelpPanel(isPresented: $showHelp)
+                    .zIndex(3)
+            }
+        }
         .background(Gradient(colors: [.blue, .purple]).opacity(0.1))
     }
 
@@ -461,3 +482,25 @@ private struct iPhoneEmptyState: View {
         }
     }
 }
+
+// MARK: - True Stack Deck Host (Beta-only gate)
+// This tiny wrapper keeps HomeView.body clean and gives a subtle background.
+// Requires you to add the new TrueStackDeckView in your project.
+@available(iOS 26.0, *)
+private struct TrueStackDeckHost: View {
+    let jobs: [Job]
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(
+                    LinearGradient(colors: [.blue, .purple],
+                                   startPoint: .topLeading,
+                                   endPoint: .bottomTrailing)
+                )
+                .opacity(0.08)
+                .ignoresSafeArea()
+            TrueStackDeckView(jobs: jobs)
+        }
+    }
+}
+

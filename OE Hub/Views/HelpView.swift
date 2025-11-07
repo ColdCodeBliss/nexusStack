@@ -1,22 +1,19 @@
 import SwiftUI
 
 struct HelpView: View {
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
-    @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
+    @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
 
     private var useBetaGlass: Bool {
         if #available(iOS 26.0, *) { return isBetaGlassEnabled }
         return false
     }
-    private var useClassicGlass: Bool { isLiquidGlassEnabled && !useBetaGlass }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
                     SectionCard(title: "Getting Started",
-                                useBetaGlass: useBetaGlass,
-                                useClassicGlass: useClassicGlass) {
+                                useBetaGlass: useBetaGlass) {
                         Label("Create your first Stack", systemImage: "folder.badge.plus")
                             .font(.subheadline.weight(.semibold))
                         Text("Tap the **+** button in the top-right of Home to add a new stack. On iPad, select a stack in the sidebar.")
@@ -24,8 +21,7 @@ struct HelpView: View {
                     }
 
                     SectionCard(title: "Tabs Overview",
-                                useBetaGlass: useBetaGlass,
-                                useClassicGlass: useClassicGlass) {
+                                useBetaGlass: useBetaGlass) {
                         tipRow(icon: "calendar", title: "Due",
                                text: "Plan deliverables & reminders. Tap left side to rename; swipe to complete/color/delete.")
                         tipRow(icon: "checkmark.square", title: "Checklist",
@@ -54,8 +50,7 @@ struct HelpView: View {
                     }
 
                     SectionCard(title: "Toolbars & Integrations",
-                                useBetaGlass: useBetaGlass,
-                                useClassicGlass: useClassicGlass) {
+                                useBetaGlass: useBetaGlass) {
                         tipRow(icon: "link", title: "Confluence",
                                text: "Add up to 5 links per stack with Universal Links.")
                         tipRow(icon: "chevron.left.slash.chevron.right", title: "GitHub",
@@ -63,14 +58,13 @@ struct HelpView: View {
                     }
 
                     SectionCard(title: "Tips",
-                                useBetaGlass: useBetaGlass,
-                                useClassicGlass: useClassicGlass) {
+                                useBetaGlass: useBetaGlass) {
                         tipRow(icon: "bell", title: "Reminders",
                                text: "Quick offsets like 2w/1w/2d/day-of on each deliverable.")
                         tipRow(icon: "paintbrush", title: "Colors",
                                text: "Tint deliverables from swipe actions.")
                         tipRow(icon: "gear", title: "Appearance",
-                               text: "Switch Liquid Glass styles in Settings.")
+                               text: "Enable Liquid Glass and True Stack in Settings.")
                     }
                 }
                 .padding(.horizontal, 16)
@@ -108,12 +102,11 @@ struct HelpView: View {
     }
 }
 
-// MARK: - Local SectionCard (same as before)
+// MARK: - Local SectionCard (Beta glass or standard)
 
 private struct SectionCard<Content: View>: View {
     var title: String? = nil
     let useBetaGlass: Bool
-    let useClassicGlass: Bool
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -139,9 +132,6 @@ private struct SectionCard<Content: View>: View {
     private var cardBackground: some View {
         if #available(iOS 26.0, *), useBetaGlass {
             Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 16))
-        } else if useClassicGlass {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.secondarySystemBackground))
@@ -149,6 +139,6 @@ private struct SectionCard<Content: View>: View {
     }
 
     private var borderColor: Color {
-        useBetaGlass || useClassicGlass ? .white.opacity(0.10) : .black.opacity(0.06)
+        useBetaGlass ? .white.opacity(0.10) : .black.opacity(0.06)
     }
 }

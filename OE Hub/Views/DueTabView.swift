@@ -31,7 +31,7 @@ struct DueTabView: View {
         )
     }
 
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
+    // Classic flag removed
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
 
     private var activeDeliverables: [Deliverable] {
@@ -71,6 +71,10 @@ struct DueTabView: View {
                     .transition(.opacity)
             }
         }
+        // ⬇️ NEW: give the sheet a little breathing room at the very top
+            .safeAreaInset(edge: .top) {
+                Color.clear.frame(height: 12)
+            }
         .background(Gradient(colors: [.blue, .purple]).opacity(0.1))
         .onAppear {
             showAddDeliverableForm = false
@@ -139,7 +143,7 @@ struct DueTabView: View {
             }
         }
 
-        // 🔹 NEW: Rename alert
+        // 🔹 Rename alert
         .alert("Rename Deliverable", isPresented: isRenamingDeliverable) {
             TextField("Title", text: $renameText)
             Button("Cancel", role: .cancel) {
@@ -209,7 +213,8 @@ struct DueTabView: View {
             .padding(.horizontal)
         }
         .padding()
-        .background(.ultraThinMaterial)
+        .padding(.top, 8)
+        .background(.ultraThinMaterial) // kept as-is (no Classic toggle dependency)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
     }
@@ -225,15 +230,49 @@ struct DueTabView: View {
 
     @ViewBuilder
     private var activeDeliverablesSection: some View {
-        Section(header: Text("Active Deliverables")) {
+        Section(
+            header:
+                HStack(spacing: 8) {
+                    Text("Active Deliverables")
+                        .font(.headline)
+
+                    Spacer()
+
+                    // Glassy "+" button (matches app style)
+                                Button {
+                                    showAddDeliverableForm = true
+                                } label: {
+                                    Image(systemName: "plus")
+                                        .font(.headline.weight(.semibold))
+                                        .frame(width: 32, height: 32)
+                                        .background(
+                                            Group {
+                                                if #available(iOS 26.0, *), isBetaGlassEnabled {
+                                                    Color.clear.glassEffect(.regular, in: .circle)
+                                                } else {
+                                                    Circle().fill(.ultraThinMaterial)
+                                                }
+                                            }
+                                        )
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .contentShape(Circle())
+                                .accessibilityLabel("Add Deliverable")
+                            }
+                            .padding(.vertical, 2)
+        ) {
             ForEach(activeDeliverables) { deliverable in
                 let tint = color(for: deliverable.colorCode)
                 let radius: CGFloat = 12
-                let isGlass = isLiquidGlassEnabled || isBetaGlassEnabled
+                let isGlass = isBetaGlassEnabled
                 let hasReminders = !deliverable.reminderOffsets.isEmpty
 
                 HStack(alignment: .center) {
-                    // 🔹 Only this left column is tappable to rename (avoids DatePicker/Bell conflicts)
+                    // Left column: tap to rename
                     VStack(alignment: .leading, spacing: 8) {
                         Text(deliverable.taskDescription)
                             .font(.headline)
@@ -267,8 +306,8 @@ struct DueTabView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .contentShape(Rectangle()) // make whitespace tappable
-                    .onTapGesture { startRenaming(deliverable) } // 🔹 rename tap
+                    .contentShape(Rectangle())
+                    .onTapGesture { startRenaming(deliverable) }
 
                     Spacer(minLength: 8)
 
@@ -335,6 +374,7 @@ struct DueTabView: View {
         }
     }
 
+
     // MARK: - Completed Sheet (standard sheet version)
 
     @ViewBuilder
@@ -344,7 +384,7 @@ struct DueTabView: View {
                 ForEach(completedDeliverables) { deliverable in
                     let tint = color(for: deliverable.colorCode)
                     let radius: CGFloat = 12
-                    let isGlass = isLiquidGlassEnabled || isBetaGlassEnabled
+                    let isGlass = isBetaGlassEnabled
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(deliverable.taskDescription).font(.headline)
@@ -400,17 +440,6 @@ struct DueTabView: View {
                 )
                 .blendMode(.plusLighter)
             }
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: radius)
-                .fill(.ultraThinMaterial)
-                .overlay(RoundedRectangle(cornerRadius: radius).fill(tint.opacity(0.55)))
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius).fill(
-                        LinearGradient(colors: [Color.white.opacity(0.18), .clear],
-                                       startPoint: .topTrailing, endPoint: .bottomLeading)
-                    )
-                    .blendMode(.plusLighter)
-                )
         } else {
             RoundedRectangle(cornerRadius: radius).fill(tint)
         }
@@ -451,7 +480,7 @@ private struct DeliverablesEmptyState: View {
     }
 }
 
-// MARK: - Completed Panel (unchanged from your version)
+// MARK: - Completed Panel (Classic removed; Beta-only or tint fallback)
 
 private struct CompletedDeliverablesPanel: View {
     @Binding var isPresented: Bool
@@ -459,7 +488,6 @@ private struct CompletedDeliverablesPanel: View {
 
     let deliverables: [Deliverable]
 
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
     @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
     @Environment(\.colorScheme) private var colorScheme
 
@@ -492,7 +520,7 @@ private struct CompletedDeliverablesPanel: View {
                         ForEach(deliverables) { d in
                             let tint = color(for: d.colorCode)
                             let radius: CGFloat = 12
-                            let isGlass = isLiquidGlassEnabled || isBetaGlassEnabled
+                            let isGlass = isBetaGlassEnabled
 
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(d.taskDescription).font(.headline).foregroundStyle(.primary)
@@ -540,6 +568,7 @@ private struct CompletedDeliverablesPanel: View {
                 ).blendMode(.plusLighter)
             }
         } else {
+            // keep simple material as non-glass fallback for panel
             RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial)
                 .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.12), lineWidth: 1))
         }
@@ -560,16 +589,6 @@ private struct CompletedDeliverablesPanel: View {
                                    startPoint: .topLeading, endPoint: .bottomTrailing)
                 ).blendMode(.plusLighter)
             }
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: radius)
-                .fill(.ultraThinMaterial)
-                .overlay(RoundedRectangle(cornerRadius: radius).fill(tint.opacity(0.55)))
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius).fill(
-                        LinearGradient(colors: [Color.white.opacity(0.18), .clear],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing)
-                    ).blendMode(.plusLighter)
-                )
         } else {
             RoundedRectangle(cornerRadius: radius).fill(tint)
         }

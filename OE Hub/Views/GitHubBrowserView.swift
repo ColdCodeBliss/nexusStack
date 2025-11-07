@@ -1,7 +1,7 @@
 //
 //  GitHubBrowserView.swift
 //  nexusStack / OE Hub
-//  Floating panel version matching SettingsPanel’s Liquid Glass
+//  Floating panel version (Beta Liquid Glass only)
 //
 
 import SwiftUI
@@ -82,14 +82,13 @@ struct GitHubBrowserView: View {
 
     /// Per-job UserDefaults key (namespaced by Job.repoBucketKey via caller)
     let recentKey: String
-    /// Max recent repos to keep (change to 5 or 10 later if desired)
+    /// Max recent repos to keep
     let maxRecents: Int = 3
 
     // MARK: Persistence via @AppStorage (dynamic key)
     @AppStorage private var recentReposJSON: String
 
-    // Appearance flags (match SettingsPanel / CLV)
-    @AppStorage("isLiquidGlassEnabled") private var isLiquidGlassEnabled = false
+    // Appearance flags (Beta Liquid Glass only)
     @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
     @AppStorage("betaWhiteGlowOpacity") private var betaWhiteGlowOpacity: Double = 0.60
 
@@ -324,13 +323,6 @@ struct GitHubBrowserView: View {
                 Button("Load Repository") { Task { await loadFromURL() } }
                     .buttonStyle(.glass)
                     .disabled(repoURLString.isEmpty)
-            } else if isLiquidGlassEnabled {
-                Button("Load Repository") { Task { await loadFromURL() } }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(.ultraThinMaterial))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.1)))
-                    .disabled(repoURLString.isEmpty)
             } else {
                 Button("Load Repository") { Task { await loadFromURL() } }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -342,14 +334,12 @@ struct GitHubBrowserView: View {
         }
     }
 
-    // MARK: - Backgrounds
+    // MARK: - Backgrounds (Beta or fallback only)
 
     @ViewBuilder
     private var panelBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 20))
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground))
         }
@@ -359,8 +349,6 @@ struct GitHubBrowserView: View {
     private var cardBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.clear, in: .rect(cornerRadius: 14))
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 14).fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 14).fill(Color(.secondarySystemBackground))
         }
@@ -370,8 +358,6 @@ struct GitHubBrowserView: View {
     private var cardRowBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.white.opacity(0.06)
-        } else if isLiquidGlassEnabled {
-            RoundedRectangle(cornerRadius: 10).fill(.ultraThinMaterial)
         } else {
             RoundedRectangle(cornerRadius: 10).fill(Color(.tertiarySystemBackground))
         }
@@ -381,8 +367,6 @@ struct GitHubBrowserView: View {
     private var chipBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.white.opacity(0.08)
-        } else if isLiquidGlassEnabled {
-            Color.gray.opacity(0.15)
         } else {
             Color.gray.opacity(0.15)
         }
