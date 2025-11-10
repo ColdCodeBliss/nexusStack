@@ -83,15 +83,13 @@ final class ThemeManager: ObservableObject {
         .midnightNeon: MidnightNeonTheme()
     ]
 
-    @Published private(set) var currentID: AppThemeID
-
-    init() {
-        self.currentID = AppThemeID(rawValue: selectedThemeIDRaw) ?? .system
-    }
+        // Derive from AppStorage (no init-time read)
+        var currentID: AppThemeID {
+            AppThemeID(rawValue: selectedThemeIDRaw) ?? .system
+        }
 
     func select(_ id: AppThemeID) {
         selectedThemeIDRaw = id.rawValue
-        currentID = id
         objectWillChange.send()
     }
 

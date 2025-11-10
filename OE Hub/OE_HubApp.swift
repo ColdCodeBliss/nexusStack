@@ -10,10 +10,14 @@ import SwiftData
 
 @main
 struct OE_HubApp: App {
+    
+    @StateObject private var theme = ThemeManager()
+    
     var body: some Scene {
         WindowGroup {
             HomeView()
                 .modelContainer(for: [Job.self, Deliverable.self, ChecklistItem.self, MindNode.self, Note.self])
+                .environmentObject(theme)
         }
     }
 }

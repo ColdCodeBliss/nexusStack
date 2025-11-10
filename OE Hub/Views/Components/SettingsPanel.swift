@@ -4,12 +4,19 @@ import StoreKit
 struct SettingsPanel: View {
     @Binding var isPresented: Bool
 
+    // Appearance flags
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false       // Real glass (iOS 26+)
     @AppStorage("betaWhiteGlowOpacity") private var betaWhiteGlowOpacity: Double = 0.60
     @AppStorage("isTrueStackEnabled") private var isTrueStackEnabled = false
 
-    @StateObject private var store = DonationStore()
+    // Stores
+    @StateObject private var store = DonationStore()       // Donations (existing)
+    @StateObject private var themeStore = ThemeStore()     // Themes (new)
+
+    // Theme manager
+    @EnvironmentObject private var theme: ThemeManager
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
@@ -88,6 +95,99 @@ struct SettingsPanel: View {
                             .animation(.default, value: isBetaGlassEnabled)
                         }
 
+                        // Themes (with lock alignment fix + debug activate)
+                        Group {
+                            Text("Themes")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                // System (free)
+                                HStack {
+                                    Label("System (default)", systemImage: theme.currentID == .system ? "checkmark.circle.fill" : "circle")
+                                        .labelStyle(.titleAndIcon)
+                                    Spacer()
+                                    Button("Use") {
+                                        theme.select(.system)
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+                                .accessibilityElement(children: .combine)
+
+                                // Midnight Neon (IAP)
+                                VStack(alignment: .leading, spacing: 8) {
+                                    // Row with title + lock right after the name
+                                    HStack {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: theme.currentID == .midnightNeon ? "checkmark.circle.fill" : "circle")
+                                            Text("Midnight Neon")
+                                            if !themeStore.isMidnightNeonUnlocked {
+                                                Image(systemName: "lock.fill")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                                    .accessibilityLabel("Locked")
+                                            }
+                                        }
+
+                                        Spacer()
+
+                                        if themeStore.isMidnightNeonUnlocked {
+                                            Button("Use") {
+                                                theme.select(.midnightNeon)
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                        } else {
+                                            let price = themeStore.midnightNeonProduct?.displayPrice
+                                            Button(price ?? "Buy") {
+                                                Task { await themeStore.purchaseMidnightNeon(theme: theme) }
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                        }
+                                    }
+
+                                    // Tiny preview chip (non-invasive)
+                                    ThemePreviewRow(isNeon: true)
+                                        .frame(height: 36)
+                                        .opacity(0.9)
+
+                                    // DEBUG-ONLY: Activate without purchase for screenshots
+                                    #if DEBUG
+                                    HStack {
+                                        Button("Activate (Test)") {
+                                            theme.select(.midnightNeon)
+                                            themeStore.lastMessage = "Midnight Neon activated for testing."
+                                        }
+                                        .buttonStyle(.bordered)
+
+                                        Button("Revert to System") {
+                                            theme.select(.system)
+                                            themeStore.lastMessage = "Reverted to System theme."
+                                        }
+                                        .buttonStyle(.plain)
+                                        .foregroundStyle(.secondary)
+
+                                        Spacer(minLength: 0)
+                                    }
+                                    .font(.footnote)
+                                    .opacity(0.9)
+                                    #endif
+                                }
+
+                                HStack {
+                                    Button("Restore Purchases") {
+                                        Task { await themeStore.restore() }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(.secondary)
+                                    Spacer(minLength: 0)
+                                }
+                            }
+                            .padding(12)
+                            .background(cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.08)))
+                        }
+
                         // Support
                         Group {
                             Text("Support")
@@ -148,7 +248,22 @@ struct SettingsPanel: View {
             .shadow(color: .black.opacity(0.35), radius: 28, y: 10)
             .padding(.horizontal, 16)
             .transition(.scale.combined(with: .opacity))
-            .task { await store.load() }
+            .task {
+                await store.load()
+                await themeStore.load()
+            }
+            // Bottom toast for theme messages
+            .overlay(alignment: .bottom) {
+                if let msg = themeStore.lastMessage {
+                    Text(msg)
+                        .font(.footnote.weight(.semibold))
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .background(.thinMaterial, in: Capsule())
+                        .padding(.bottom, 10)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
     }
 
@@ -196,5 +311,33 @@ struct SettingsPanel: View {
         )
         .foregroundStyle(glassOn ? Color.primary : Color.white)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(glassOn ? 0.08 : 0)))
+    }
+}
+
+// Tiny preview chip used in the Themes section
+private struct ThemePreviewRow: View {
+    var isNeon: Bool
+    var body: some View {
+        ZStack {
+            if isNeon {
+                LinearGradient(
+                    colors: [
+                        Color(hex: "#0B1020") ?? .black,
+                        Color(hex: "#140F2A") ?? .black,
+                        Color(hex: "#0F1326") ?? .black
+                    ],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke((Color(hex: "#2CF3FF") ?? .cyan).opacity(0.35), lineWidth: 1)
+                        .shadow(color: (Color(hex: "#2CF3FF") ?? .cyan).opacity(0.20), radius: 8)
+                )
+            } else {
+                Color(.secondarySystemBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
     }
 }
