@@ -415,7 +415,7 @@ struct TrueStackDeckView: View {
 
         // --- Midnight Neon border + exact-fit "neon tube" (top card only, no shadow) ---
         .overlay(alignment: .topLeading) {
-            if theme.currentID == .midnightNeon && isTop {
+            if theme.currentID == .midnightNeon {
                 let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
                 let w = size.width
                 let h = size.height
