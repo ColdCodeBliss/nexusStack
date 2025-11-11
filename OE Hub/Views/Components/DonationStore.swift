@@ -16,8 +16,8 @@ final class DonationStore: ObservableObject {
     private let productIDs: Set<String> = [
         "com.coldcodebliss.nexusstack.tip.2",
         "com.coldcodebliss.nexusstack.tip.5",
-        "com.coldcodebliss.nexusstack.tip.10",
-        "com.coldcodebliss.nexusstack.tip.20"
+        "com.coldcodebliss.nexusstack.tip.10"
+        //"com.coldcodebliss.nexusstack.tip.20"
     ]
 
     @Published var isLoading = false

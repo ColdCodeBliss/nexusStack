@@ -9,6 +9,11 @@ import SwiftUI
 
 @available(iOS 26.0, *)
 struct TrueStackExpandedView: View {
+    
+    @EnvironmentObject private var theme: ThemeManager
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
+    
     // MARK: Inputs
     let job: Job
 
@@ -142,6 +147,22 @@ struct TrueStackExpandedView: View {
         }
     }
 
+    @ViewBuilder
+        private var panelBackground: some View {
+            // THEME: use theme tint under glass (never overpower)
+            let tint = theme.palette(colorScheme).panelBackgroundTint
+            if #available(iOS 26.0, *), isBetaGlassEnabled {
+                ZStack {
+                    tint // sits “under” real glass
+                    Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 20))
+                }
+            } else {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.ultraThinMaterial)
+                    .background(tint) // subtle tint behind material
+            }
+        }
+    
     private func dragGesture(geoHeight: CGFloat) -> some Gesture {
         let threshold: CGFloat = min(220, geoHeight * 0.25)
         return DragGesture(minimumDistance: 5, coordinateSpace: .local)

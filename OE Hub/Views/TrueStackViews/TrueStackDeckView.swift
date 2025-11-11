@@ -30,6 +30,7 @@ struct TrueStackDeckView: View {
     // Env
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var theme: ThemeManager
 
     // Feature flags
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
@@ -44,7 +45,7 @@ struct TrueStackDeckView: View {
     @State private var expandedJob: Job? = nil
     @Namespace private var deckNS
 
-    // External routes (unchanged behavior)
+    // External routes
     @State private var showGitHub = false
     @State private var showConfluence = false
 
@@ -58,7 +59,7 @@ struct TrueStackDeckView: View {
     @State private var showSettings = false
     @State private var showHelp = false
 
-    // NEW: single source of truth for which detail tab to open
+    // Detail routing
     @State private var activeDetail: ActiveDetail? = nil
 
     // Layout dials
@@ -141,38 +142,30 @@ struct TrueStackDeckView: View {
                     .zIndex(10)
                 }
 
-                // ──────────────────────────────────────────────────────────────
-                // Corner controls + center logo (portrait on iPhone; both on iPad)
-                // ──────────────────────────────────────────────────────────────
+                // Corner controls + logo (unchanged)
                 GeometryReader { g in
                     let isLandscape = g.size.width > g.size.height
                     let isPad = UIDevice.current.userInterfaceIdiom == .pad
 
-                    // Safe-area edges
                     let safeTop = g.safeAreaInsets.top
                     let safeLeading = g.safeAreaInsets.leading
                     let safeTrailing = g.safeAreaInsets.trailing
 
-                    // Control size (≈40pt total)
                     let buttonSize: CGFloat = 40
                     let half: CGFloat = buttonSize / 2
 
-                    // Tunable iPad landscape bump (you chose 22)
                     let padLandscapeBumpY: CGFloat = 22
 
-                    // Portrait positions
                     let portraitLeftX  = safeLeading + 16 + half
                     let portraitLeftY  = safeTop + 56 + half
                     let portraitRightX = g.size.width - safeTrailing - 16 - half
                     let portraitRightY = portraitLeftY
 
-                    // Landscape positions (+ optional iPad bump)
                     let landscapeLeftX  = safeLeading + 24 + half
                     let landscapeLeftY  = safeTop + 12 + half + ((isPad && isLandscape) ? padLandscapeBumpY : 0)
                     let landscapeRightX = g.size.width - safeTrailing - 24 - half
                     let landscapeRightY = landscapeLeftY
 
-                    // Hamburger (Settings / Help)
                     Menu {
                         Button("Settings") { showSettings = true }
                         Button("Help")     { showHelp = true }
@@ -196,7 +189,6 @@ struct TrueStackDeckView: View {
                         y: isLandscape ? landscapeLeftY  : portraitLeftY
                     )
 
-                    // ➕ Add Job
                     Button {
                         addJob()
                     } label: {
@@ -219,18 +211,17 @@ struct TrueStackDeckView: View {
                         y: isLandscape ? landscapeRightY : portraitRightY
                     )
 
-                    // Center logo (portrait on iPhone; both orientations on iPad)
                     if (!isLandscape) || isPad {
                         let phonePortraitBump: CGFloat = 12
                         let logoY: CGFloat = (isPad && isLandscape)
-                            ? landscapeLeftY             // includes iPad bump
+                            ? landscapeLeftY
                             : (portraitLeftY + phonePortraitBump)
 
                         let logoWidth = isPad
                             ? min(g.size.width * 0.12, 100)
                             : min(g.size.width * 0.21, 96)
 
-                        Image("nexusStack_logo")        // Any/Dark variants are handled in the asset
+                        Image("nexusStack_logo")
                             .resizable()
                             .scaledToFit()
                             .frame(width: logoWidth)
@@ -243,10 +234,8 @@ struct TrueStackDeckView: View {
                 .ignoresSafeArea()
             }
 
-            // Initialize deck
             .task { deck = jobs }
 
-            // Re-measure on width changes (rotation)
             .onChange(of: geo.size.width) { oldW, newW in
                 if abs(newW - oldW) > 1 {
                     lastMeasuredWidth = newW
@@ -254,19 +243,15 @@ struct TrueStackDeckView: View {
                 }
             }
 
-            // Re-measure when the top card changes
             .onChange(of: topID) {
                 topCardContentHeight = 0
             }
 
-            // ROUTES
-            // Single detail sheet that honors the initial tab on first open
             .sheet(item: $activeDetail) { detail in
                 JobDetailView(job: detail.job, initialTab: detail.tab)
                     .navigationBarTitleDisplayMode(.inline)
             }
 
-            // External full-screen views (unchanged)
             .fullScreenCover(isPresented: $showGitHub) {
                 if let j = expandedJob {
                     GitHubBrowserView(recentKey: "recentRepos.\(j.repoBucketKey)")
@@ -278,7 +263,6 @@ struct TrueStackDeckView: View {
                 }
             }
 
-            // Settings / Help
             .sheet(isPresented: Binding(
                 get: { showSettings && !isBetaGlassEnabled },
                 set: { if !$0 { showSettings = false } }
@@ -298,7 +282,6 @@ struct TrueStackDeckView: View {
                 }
             }
 
-            // Alerts
             .alert("Rename Stack", isPresented: $showRenameAlert) {
                 TextField("Title", text: $pendingRenameText)
                 Button("Cancel", role: .cancel) { jobForContext = nil }
@@ -379,6 +362,9 @@ struct TrueStackDeckView: View {
             }
         )
 
+        // Theme palette (for optional neon overlay)
+        let p = theme.palette(colorScheme)
+        
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(.clear)
@@ -427,6 +413,53 @@ struct TrueStackDeckView: View {
         .clipped()
         .animation(nil, value: topCardContentHeight)
 
+        // --- Midnight Neon border + exact-fit "neon tube" (top card only, no shadow) ---
+        .overlay(alignment: .topLeading) {
+            if theme.currentID == .midnightNeon {
+                let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+                let w = size.width
+                let h = size.height
+
+                // 0) Subtle inset border (unchanged behavior)
+                shape
+                    .strokeBorder(p.neonAccent.opacity(isBetaGlassEnabled ? 0.24 : 0.32), lineWidth: 1)
+                    .frame(width: w, height: h, alignment: .topLeading)
+
+                // 1) "Tube" core — thin, bright line right on the edge
+                shape
+                    .stroke(p.neonAccent.opacity(0.95), lineWidth: 2)
+                    .frame(width: w, height: h, alignment: .topLeading)
+
+                // 2) Tight glow — hugs the tube closely
+                shape
+                    .stroke(p.neonAccent.opacity(0.55), lineWidth: 8)
+                    .blur(radius: 6)
+                    .mask(
+                        shape
+                            .inset(by: 8 / 2)
+                            .stroke(lineWidth: 8)
+                            .frame(width: w, height: h, alignment: .topLeading)
+                    )
+                    .compositingGroup()     // isolate blur
+                    .clipShape(shape)       // hard-clip to card
+                    .frame(width: w, height: h, alignment: .topLeading)
+
+                // 3) Outer bloom — wider, softer wash
+                shape
+                    .stroke(p.neonAccent.opacity(0.28), lineWidth: 18)
+                    .blur(radius: 18)
+                    .mask(
+                        shape
+                            .inset(by: 18 / 2)
+                            .stroke(lineWidth: 18)
+                            .frame(width: w, height: h, alignment: .topLeading)
+                    )
+                    .compositingGroup()
+                    .clipShape(shape)
+                    .frame(width: w, height: h, alignment: .topLeading)
+            }
+        }
+
         .opacity(isTop ? 1.0 : nonTopOpacity)
         .matchedGeometryEffect(id: job.persistentModelID, in: deckNS)
         .rotationEffect(.degrees(isTop ? 0 : Double(tiltSign) * Double(tiltDegrees)))
@@ -439,8 +472,12 @@ struct TrueStackDeckView: View {
                 withAnimation(.none) { topCardContentHeight = h }
             }
         }
-        .shadow(color: .black.opacity(isTop ? 0.35 : 0.22),
-                radius: isTop ? 20 : 12, y: isTop ? 12 : 6)
+        // Disable shadow for Midnight Neon on the top card to avoid any bottom plume
+        .shadow(
+            color: (theme.currentID == .midnightNeon && isTop) ? Color.clear : Color.black.opacity(isTop ? 0.35 : 0.22),
+            radius: (theme.currentID == .midnightNeon && isTop) ? 0 : (isTop ? 20 : 12),
+            y: (theme.currentID == .midnightNeon && isTop) ? 0 : (isTop ? 12 : 6)
+        )
     }
 
     // MARK: - Info grid
@@ -498,18 +535,15 @@ struct TrueStackDeckView: View {
     // MARK: - Routing helper
 
     private func openDetail(for job: Job, tab: JobDetailView.DetailTab) {
-        // Close the expanded panel and open the requested tab on the detail sheet.
         withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
             expandedJob = nil
         }
-        // Set the item AFTER closing to avoid animation conflicts.
-        // Dispatch to next runloop ensures the sheet reads the correct initial tab on first presentation.
         DispatchQueue.main.async {
             activeDetail = ActiveDetail(job: job, tab: tab)
         }
     }
 
-    // MARK: - Add Job (mirrors HomeView behavior)
+    // MARK: - Add Job
 
     private func addJob() {
         let nextIndex = (jobs.count + 1)
@@ -520,7 +554,6 @@ struct TrueStackDeckView: View {
         } catch {
             print("Error saving new stack: \(error)")
         }
-        // Make it feel instant in this view as well:
         deck.insert(newJob, at: 0)
     }
 }

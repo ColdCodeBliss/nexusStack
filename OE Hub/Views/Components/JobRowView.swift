@@ -12,10 +12,14 @@ struct JobRowView: View {
     // Suggested slider range: 0.00 ... 0.60
     @AppStorage("betaWhiteGlowOpacity") private var betaWhiteGlowOpacity: Double = 0.22
 
+    // THEME (added)
+    @EnvironmentObject private var theme: ThemeManager
+
     private let radius: CGFloat = 20
 
     var body: some View {
         let tint = color(for: job.effectiveColorIndex)
+        let p = theme.palette(colorScheme) // theme palette for neon/glow
 
         VStack(alignment: .leading, spacing: 8) {
             Text(job.title)
@@ -32,12 +36,35 @@ struct JobRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground(tint: tint))                     // ← bubble styles here
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+
+        // Original border (kept)
         .overlay(
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .stroke(borderColor, lineWidth: 1)
         )
-        // “Floating bubble” shadow (white glow in dark mode + Beta glass)
+
+        // NEW: Midnight Neon accent border (adds on top of original)
+        .overlay(
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .strokeBorder(
+                    theme.currentID == .midnightNeon
+                    ? p.neonAccent.opacity(isBetaGlassEnabled ? 0.28 : 0.35)
+                    : .clear,
+                    lineWidth: 1
+                )
+        )
+
+
+        // Original floating bubble shadow (kept)
         .shadow(color: currentShadowColor, radius: shadowRadius, y: shadowY)
+
+        // NEW: Neon glow (separate shadow so it layers with the existing one)
+        .shadow(
+            color: theme.currentID == .midnightNeon ? p.glowColor : .clear,
+            radius: isBetaGlassEnabled ? 10 : 14,
+            y: 0
+        )
+
         .padding(.vertical, 2)
     }
 
