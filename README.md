@@ -1,6 +1,6 @@
 nexusStack - Productivity Task Manager
 
-<img src="Screenshots/HomeView.png" alt="HomeView" width="1206" height="2622"><img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="1206" height="2622">
+<img src="Screenshots/HomeView.png" alt="HomeView" width="300" height="500"><img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="1206" height="2622">
 <img src="Screenshots/TrueStackDeckView.png" alt="CardDeckView" width="1206" height="2622">
 
 nexusStack is a sleek productivity app designed to simplify task and project management. Built for iOS, it helps users create and organize jobs with deliverables, checklists, notes, and due dates. The app offers customizable task colors, reminder notifications, and options to mark tasks as complete or delete them, all within an intuitive interface featuring tabs for due tasks, checklists, notes, and job details.
