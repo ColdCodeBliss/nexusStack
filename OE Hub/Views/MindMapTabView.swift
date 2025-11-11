@@ -5,6 +5,7 @@ import UIKit
 struct MindMapTabView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var theme: ThemeManager          // ⬅️ THEME
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
 
     var job: Job
@@ -209,16 +210,24 @@ struct MindMapTabView: View {
         ZStack {
             // edges
             Canvas { ctx, _ in
+                let neonOn = (theme.currentID == .midnightNeon)
+                let accent = theme.palette(colorScheme).neonAccent
+
                 for node in job.mindNodes {
                     guard let parent = node.parent else { continue }
                     let p1 = CGPoint(x: parent.x, y: parent.y)
                     let p2 = CGPoint(x: node.x,   y: node.y)
-                    var path = Path()
-                    let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
-                    path.move(to: p1)
-                    path.addQuadCurve(to: p2, control: mid)
-                    let stroke = StrokeStyle(lineWidth: 2, lineCap: .round)
-                    ctx.stroke(path, with: .color(.primary.opacity(0.25)), style: stroke)
+
+                    if neonOn {
+                        strokeEdgeNeon(&ctx, from: p1, to: p2, accent: accent, neonFlicker: neonFlicker)
+                    } else {
+                        var path = Path()
+                        let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
+                        path.move(to: p1)
+                        path.addQuadCurve(to: p2, control: mid)
+                        let stroke = StrokeStyle(lineWidth: 2, lineCap: .round)
+                        ctx.stroke(path, with: .color(.primary.opacity(0.25)), style: stroke)
+                    }
                 }
             }
 
@@ -252,18 +261,28 @@ struct MindMapTabView: View {
     private var snapshotContent: some View {
         ZStack {
             Canvas { ctx, _ in
+                let neonOn = (theme.currentID == .midnightNeon)
+                let accent = theme.palette(colorScheme).neonAccent
+
                 for node in job.mindNodes {
                     guard let parent = node.parent else { continue }
                     let p1 = CGPoint(x: parent.x, y: parent.y)
                     let p2 = CGPoint(x: node.x,   y: node.y)
-                    var path = Path()
-                    let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
-                    path.move(to: p1)
-                    path.addQuadCurve(to: p2, control: mid)
-                    let stroke = StrokeStyle(lineWidth: 2, lineCap: .round)
-                    ctx.stroke(path, with: .color(.primary.opacity(0.25)), style: stroke)
+
+                    if neonOn {
+                        // Use a slightly lower base opacity for export so lines don’t overpower nodes
+                        strokeEdgeNeon(&ctx, from: p1, to: p2, accent: accent, baseOpacity: 0.22, neonFlicker: neonFlicker)
+                    } else {
+                        var path = Path()
+                        let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
+                        path.move(to: p1)
+                        path.addQuadCurve(to: p2, control: mid)
+                        let stroke = StrokeStyle(lineWidth: 2, lineCap: .round)
+                        ctx.stroke(path, with: .color(.primary.opacity(0.25)), style: stroke)
+                    }
                 }
             }
+
 
             ForEach(job.mindNodes) { node in
                 NodeBubbleSnapshot(
@@ -915,8 +934,6 @@ private struct NodeBubbleSnapshot: View {
                 radius: neonOn ? 0 : (glassOn ? 12 : 5),
                 x: 0, y: neonOn ? 0 : (glassOn ? 7 : 0))
     }
-    
-    
 
     @ViewBuilder
     private func nodeBackground(tint: Color) -> some View {
@@ -969,6 +986,52 @@ private struct NodeBubbleSnapshot: View {
         return AnyView(overlay)
     }
 }
+
+// MARK: - Neon edge stroker (used by live & snapshot canvases)
+private func strokeEdgeNeon(
+    _ ctx: inout GraphicsContext,
+    from p1: CGPoint,
+    to p2: CGPoint,
+    accent: Color,
+    baseOpacity: Double = 0.28,
+    neonFlicker: Double
+) {
+    // Shared path + base stroke
+    var path = Path()
+    let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
+    path.move(to: p1)
+    path.addQuadCurve(to: p2, control: mid)
+
+    let baseStyle = StrokeStyle(lineWidth: 2, lineCap: .round)
+    ctx.stroke(path, with: .color(.primary.opacity(baseOpacity)), style: baseStyle)
+
+    // Neon layers (contained in a layer so filters don't leak)
+    ctx.drawLayer { layer in
+        // Core
+        layer.stroke(path,
+                     with: .color(accent.opacity(0.70 * neonFlicker)),
+                     style: StrokeStyle(lineWidth: 2, lineCap: .round))
+
+        // Tight glow
+        layer.addFilter(.shadow(color: accent.opacity(0.55 * neonFlicker), radius: 6, x: 0, y: 0))
+        layer.stroke(path,
+                     with: .color(accent.opacity(0.38 * neonFlicker)),
+                     style: StrokeStyle(lineWidth: 4, lineCap: .round))
+
+        // Mid bloom
+        layer.addFilter(.shadow(color: accent.opacity(0.35 * neonFlicker), radius: 12, x: 0, y: 0))
+        layer.stroke(path,
+                     with: .color(accent.opacity(0.22 * neonFlicker)),
+                     style: StrokeStyle(lineWidth: 8, lineCap: .round))
+
+        // Wide mist
+        layer.addFilter(.shadow(color: accent.opacity(0.20 * neonFlicker), radius: 18, x: 0, y: 0))
+        layer.stroke(path,
+                     with: .color(accent.opacity(0.12 * neonFlicker)),
+                     style: StrokeStyle(lineWidth: 12, lineCap: .round))
+    }
+}
+
 
 // MARK: - Share sheet wrapper
 private struct ActivityView: UIViewControllerRepresentable {
