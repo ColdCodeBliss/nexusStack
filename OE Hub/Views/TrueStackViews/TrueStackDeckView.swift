@@ -61,6 +61,11 @@ struct TrueStackDeckView: View {
 
     // Detail routing
     @State private var activeDetail: ActiveDetail? = nil
+    
+    // FLICKER (Midnight Neon only)
+    @State private var neonFlicker: Double = 1.0      // 1.0 = normal brightness
+    @State private var isFlickerActive = false        // gates scheduled steps
+
 
     // Layout dials
     private let horizontalGutter: CGFloat = 18
@@ -236,6 +241,22 @@ struct TrueStackDeckView: View {
 
             .task { deck = jobs }
 
+            // FLICKER lifecycle
+            .onAppear {
+                isFlickerActive = (theme.currentID == .midnightNeon)
+                if isFlickerActive { scheduleNextFlicker() }
+            }
+            .onDisappear {
+                isFlickerActive = false
+                neonFlicker = 1.0
+            }
+            .onChange(of: theme.currentID) {
+                isFlickerActive = (theme.currentID == .midnightNeon)
+                neonFlicker = 1.0
+                if isFlickerActive { scheduleNextFlicker() }
+            }
+            // end flicker lifestyle
+            
             .onChange(of: geo.size.width) { oldW, newW in
                 if abs(newW - oldW) > 1 {
                     lastMeasuredWidth = newW
@@ -425,14 +446,14 @@ struct TrueStackDeckView: View {
                     .strokeBorder(p.neonAccent.opacity(isBetaGlassEnabled ? 0.24 : 0.32), lineWidth: 1)
                     .frame(width: w, height: h, alignment: .topLeading)
 
-                // 1) "Tube" core — bright line on the edge (unchanged)
+                // 1) "Tube" core — bright line on the edge  ⟵ FLICKER
                 shape
-                    .stroke(p.neonAccent.opacity(0.95), lineWidth: 2)
+                    .stroke(p.neonAccent.opacity(0.95 * neonFlicker), lineWidth: 2)
                     .frame(width: w, height: h, alignment: .topLeading)
 
-                // 2) Tight inner glow — hugs the tube (unchanged)
+                // 2) Tight inner glow — hugs the tube  ⟵ FLICKER
                 shape
-                    .stroke(p.neonAccent.opacity(0.55), lineWidth: 8)
+                    .stroke(p.neonAccent.opacity(0.55 * neonFlicker), lineWidth: 8)
                     .blur(radius: 6)
                     .mask(
                         shape
@@ -444,7 +465,7 @@ struct TrueStackDeckView: View {
                     .clipShape(shape)
                     .frame(width: w, height: h, alignment: .topLeading)
 
-                // 3) Inner bloom — wider, softer (unchanged)
+                // 3) Inner bloom — wider, softer (kept steady for comfort)
                 shape
                     .stroke(p.neonAccent.opacity(0.28), lineWidth: 18)
                     .blur(radius: 18)
@@ -458,19 +479,18 @@ struct TrueStackDeckView: View {
                     .clipShape(shape)
                     .frame(width: w, height: h, alignment: .topLeading)
 
-                // 4) NEW: Misty OUTER glow that wraps the rim evenly (no alignment change)
-                //    Uses zero-offset shadows on a faint stroke so the glow blooms outside.
-                //    No clip on this layer so the light can extend off the card.
-                let glowColor = color(for: job.effectiveColorIndex)   // glow keyed to card color
+                // 4) Misty OUTER glow wrapping the rim (card color)
+                let glowColor = color(for: job.effectiveColorIndex)
                 shape
-                    .stroke(glowColor.opacity(0.15), lineWidth: 10)    // faint geometry for shadow mask
-                    .shadow(color: glowColor.opacity(0.28), radius: 10,  x: 0, y: 0)  // tight aura
-                    .shadow(color: glowColor.opacity(0.20), radius: 18, x: 0, y: 0)  // mid bloom
-                    .shadow(color: glowColor.opacity(0.12), radius: 30, x: 0, y: 0)  // wide feather
-                    .blendMode(.plusLighter)                           // gentle additive feel
+                    .stroke(glowColor.opacity(0.15), lineWidth: 10)
+                    .shadow(color: glowColor.opacity(0.28), radius: 10,  x: 0, y: 0) // tight aura
+                    .shadow(color: glowColor.opacity(0.20), radius: 18, x: 0, y: 0) // mid bloom
+                    .shadow(color: glowColor.opacity(0.12), radius: 30, x: 0, y: 0) // wide feather
+                    .blendMode(.plusLighter)
                     .frame(width: w, height: h, alignment: .topLeading)
             }
         }
+
 
 
         .opacity(isTop ? 1.0 : nonTopOpacity)
@@ -555,6 +575,39 @@ struct TrueStackDeckView: View {
             activeDetail = ActiveDetail(job: job, tab: tab)
         }
     }
+    
+    // MARK: - Neon Flicker (subtle, occasional)
+    private func scheduleNextFlicker() {
+        guard theme.currentID == .midnightNeon, isFlickerActive else { return }
+        let delay = Double.random(in: 6.0...14.0) // quiet window between flickers
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            runFlickerSequence()
+        }
+    }
+
+    private func runFlickerSequence() {
+        guard theme.currentID == .midnightNeon, isFlickerActive else { return }
+        var t: TimeInterval = 0
+
+        func step(_ value: Double, _ dur: TimeInterval) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + t) {
+                guard isFlickerActive, theme.currentID == .midnightNeon else { return }
+                withAnimation(.easeOut(duration: dur)) { neonFlicker = value }
+            }
+            t += dur + 0.02
+        }
+
+        // quick, gentle hiccup
+        step(0.65, 0.06)
+        step(1.00, 0.08)
+        step(0.80, 0.04)
+        step(1.00, 0.12)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + t + 0.4) {
+            scheduleNextFlicker()
+        }
+    }
+
 
     // MARK: - Add Job
 
