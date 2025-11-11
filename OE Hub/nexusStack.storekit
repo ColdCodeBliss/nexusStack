@@ -15,6 +15,36 @@
   ],
   "products" : [
     {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "6755098354",
+      "localizations" : [
+        {
+          "description" : "Futuristic cyan and magenta glow theme.",
+          "displayName" : "Midnight Neon Theme",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.coldcodebliss.nexusstack.theme.midnightNeon",
+      "referenceName" : "Theme - Midnight Neon",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "6755014870",
+      "localizations" : [
+        {
+          "description" : "A small tip to support ongoing development.",
+          "displayName" : "Support the Developer - $2",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.coldcodebliss.nexusstack.tip.2",
+      "referenceName" : "Tip - $2",
+      "type" : "Consumable"
+    },
+    {
       "displayPrice" : "4.99",
       "familyShareable" : false,
       "internalID" : "6752782412",
@@ -68,7 +98,7 @@
     "_developerTeamID" : "86MW3ZP4BF",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 779990946.00704503,
+    "_lastSynchronizedDate" : 784592370.48962796,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",

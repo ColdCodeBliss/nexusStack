@@ -915,6 +915,8 @@ private struct NodeBubbleSnapshot: View {
                 radius: neonOn ? 0 : (glassOn ? 12 : 5),
                 x: 0, y: neonOn ? 0 : (glassOn ? 7 : 0))
     }
+    
+    
 
     @ViewBuilder
     private func nodeBackground(tint: Color) -> some View {
