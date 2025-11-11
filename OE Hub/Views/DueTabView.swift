@@ -13,6 +13,7 @@ struct DueTabView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var theme: ThemeManager          // ← THEME
 
     @State private var showAddDeliverableForm = false
     @State private var showCompletedDeliverables = false
@@ -43,6 +44,10 @@ struct DueTabView: View {
     private var useWhiteGlow: Bool { isBetaGlassEnabled && colorScheme == .dark }
     private var whiteGlowColor: Color { Color.white.opacity(0.20) }
 
+    // 🔆 Midnight Neon — shared, subtle flicker for all rows in this view
+    @State private var neonFlicker: Double = 1.0
+    @State private var flickerArmed: Bool = false
+
     var body: some View {
         ZStack {
             VStack(spacing: 16) {
@@ -72,13 +77,18 @@ struct DueTabView: View {
             }
         }
         // ⬇️ NEW: give the sheet a little breathing room at the very top
-            .safeAreaInset(edge: .top) {
-                Color.clear.frame(height: 12)
-            }
+        .safeAreaInset(edge: .top) {
+            Color.clear.frame(height: 12)
+        }
         .background(Gradient(colors: [.blue, .purple]).opacity(0.1))
         .onAppear {
             showAddDeliverableForm = false
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+            armFlickerIfNeeded()                  // ← start flicker when Neon active
+        }
+        .onDisappear { flickerArmed = false }     // ← stop when view leaves
+        .onChange(of: theme.currentID) { _, _ in  // ← react to theme switch
+            armFlickerIfNeeded()
         }
         .onChange(of: addDeliverableTrigger) { _, _ in
             showAddDeliverableForm = true
@@ -239,37 +249,38 @@ struct DueTabView: View {
                     Spacer()
 
                     // Glassy "+" button (matches app style)
-                                Button {
-                                    showAddDeliverableForm = true
-                                } label: {
-                                    Image(systemName: "plus")
-                                        .font(.headline.weight(.semibold))
-                                        .frame(width: 32, height: 32)
-                                        .background(
-                                            Group {
-                                                if #available(iOS 26.0, *), isBetaGlassEnabled {
-                                                    Color.clear.glassEffect(.regular, in: .circle)
-                                                } else {
-                                                    Circle().fill(.ultraThinMaterial)
-                                                }
-                                            }
-                                        )
-                                        .overlay(
-                                            Circle()
-                                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                                        )
+                    Button {
+                        showAddDeliverableForm = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.headline.weight(.semibold))
+                            .frame(width: 32, height: 32)
+                            .background(
+                                Group {
+                                    if #available(iOS 26.0, *), isBetaGlassEnabled {
+                                        Color.clear.glassEffect(.regular, in: .circle)
+                                    } else {
+                                        Circle().fill(.ultraThinMaterial)
+                                    }
                                 }
-                                .buttonStyle(.plain)
-                                .contentShape(Circle())
-                                .accessibilityLabel("Add Deliverable")
-                            }
-                            .padding(.vertical, 2)
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+                    .accessibilityLabel("Add Deliverable")
+                }
+                .padding(.vertical, 2)
         ) {
             ForEach(activeDeliverables) { deliverable in
                 let tint = color(for: deliverable.colorCode)
                 let radius: CGFloat = 12
                 let isGlass = isBetaGlassEnabled
                 let hasReminders = !deliverable.reminderOffsets.isEmpty
+                let neonOn = (theme.currentID == .midnightNeon)
 
                 HStack(alignment: .center) {
                     // Left column: tap to rename
@@ -325,14 +336,24 @@ struct DueTabView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(rowBackground(tint: tint, radius: radius))
                 .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+
+                // Original hairline stroke
                 .overlay(
                     RoundedRectangle(cornerRadius: radius, style: .continuous)
                         .stroke(isGlass ? Color.white.opacity(0.10) : Color.white.opacity(0.20), lineWidth: 1)
                 )
-                .shadow(color: useWhiteGlow ? whiteGlowColor
-                                            : (isGlass ? .black.opacity(0.25) : .black.opacity(0.15)),
-                        radius: useWhiteGlow ? 14 : (isGlass ? 14 : 5),
-                        x: 0, y: useWhiteGlow ? 4 : (isGlass ? 8 : 0))
+
+                // 🌙 Midnight Neon tube + glow (contained; no trailing)
+                .overlay(neonOverlayRow(radius: radius))
+
+                // Keep legacy shadow unless neon is active (neon handles glow)
+                .shadow(
+                    color: neonOn ? .clear
+                                  : (useWhiteGlow ? whiteGlowColor
+                                                  : (isGlass ? .black.opacity(0.25) : .black.opacity(0.15))),
+                    radius: neonOn ? 0 : (useWhiteGlow ? 14 : (isGlass ? 14 : 5)),
+                    x: 0, y: neonOn ? 0 : (useWhiteGlow ? 4 : (isGlass ? 8 : 0))
+                )
 
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                     Button {
@@ -442,6 +463,83 @@ struct DueTabView: View {
             }
         } else {
             RoundedRectangle(cornerRadius: radius).fill(tint)
+        }
+    }
+
+    // 🌙 Midnight Neon overlay for a single row (tube + inner glows, masked)
+    @ViewBuilder
+    private func neonOverlayRow(radius: CGFloat) -> some View {
+        if theme.currentID == .midnightNeon {
+            let p = theme.palette(colorScheme)
+            let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+            // Tuned alphas for list rows
+            let borderAlpha    = isBetaGlassEnabled ? 0.24 : 0.32
+            let tubeAlpha      = isBetaGlassEnabled ? 0.55 : 0.65
+            let innerGlowAlpha = isBetaGlassEnabled ? 0.22 : 0.28
+            let bloomAlpha     = isBetaGlassEnabled ? 0.14 : 0.20
+
+            Group {
+                // crisp inset border
+                shape
+                    .strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+
+                // tube core (thin bright line)
+                shape
+                    .stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                    .blendMode(.plusLighter)
+                    .mask(shape.stroke(lineWidth: 2))
+
+                // tight inner glow
+                shape
+                    .stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 8)
+                    .blur(radius: 9)
+                    .blendMode(.plusLighter)
+                    .mask(shape.stroke(lineWidth: 10))
+
+                // inner bloom
+                shape
+                    .stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 14)
+                    .blur(radius: 16)
+                    .blendMode(.plusLighter)
+                    .mask(shape.stroke(lineWidth: 16))
+            }
+        }
+    }
+
+    // MARK: - Flicker scheduler
+
+    private func armFlickerIfNeeded() {
+        guard theme.currentID == .midnightNeon else {
+            flickerArmed = false
+            neonFlicker = 1.0
+            return
+        }
+        guard !flickerArmed else { return }
+        flickerArmed = true
+        scheduleNextFlicker()
+    }
+
+    private func scheduleNextFlicker() {
+        guard flickerArmed else { return }
+        let delay = Double.random(in: 6.0...14.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard flickerArmed else { return }
+            withAnimation(.easeInOut(duration: 0.10)) { neonFlicker = 0.78 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.easeInOut(duration: 0.16)) { neonFlicker = 1.0 }
+                if Bool.random() {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                        withAnimation(.easeInOut(duration: 0.08)) { neonFlicker = 0.88 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.easeInOut(duration: 0.12)) { neonFlicker = 1.0 }
+                            scheduleNextFlicker()
+                        }
+                    }
+                } else {
+                    scheduleNextFlicker()
+                }
+            }
         }
     }
 }

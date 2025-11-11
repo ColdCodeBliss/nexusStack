@@ -9,11 +9,11 @@ import SwiftUI
 
 @available(iOS 26.0, *)
 struct TrueStackExpandedView: View {
-    
+
     @EnvironmentObject private var theme: ThemeManager
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
-    
+
     // MARK: Inputs
     let job: Job
 
@@ -31,12 +31,18 @@ struct TrueStackExpandedView: View {
     @State private var dragOffsetY: CGFloat = 0
     @GestureState private var dragTranslation: CGSize = .zero
 
+    // MARK: Midnight Neon — subtle flicker (panel-only)
+    @State private var neonFlicker: Double = 1.0
+    @State private var flickerArmed: Bool = false
+
     var body: some View {
         GeometryReader { geo in
             // Bottom sheet sizing: wide enough, tall enough, but leaves a little space at the top
             let maxW  = min(geo.size.width  * 0.96, 700)
             let maxH  = geo.size.height * 0.90
             let tint  = color(for: job.colorCode)
+            let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+            let p     = theme.palette(colorScheme)
 
             VStack(spacing: 0) {
                 // Header (chevron down + grabber)
@@ -116,18 +122,57 @@ struct TrueStackExpandedView: View {
                     Color.clear.glassEffect(.regular.tint(tint.opacity(0.55)),
                                              in: .rect(cornerRadius: 24))
                     // Subtle plus-lighter glow layer
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    shape
                         .fill(
                             LinearGradient(colors: [Color.white.opacity(0.16), .clear],
                                            startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
                         .blendMode(.plusLighter)
                     // Hairline stroke
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    shape
                         .stroke(Color.white.opacity(0.10), lineWidth: 1)
                 }
             )
+
+            // --- Midnight Neon: tube + glow (panel edge only) ---
+            .overlay(
+                Group {
+                    if theme.currentID == .midnightNeon {
+                        let tubeAlphaBase   = isBetaGlassEnabled ? 0.55 : 0.65
+                        let innerGlowAlpha  = isBetaGlassEnabled ? 0.22 : 0.28
+                        let bloomAlpha      = isBetaGlassEnabled ? 0.15 : 0.20
+                        let borderAlpha     = isBetaGlassEnabled ? 0.24 : 0.32
+
+                        // 1) crisp inset border
+                        shape
+                            .strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+
+                        // 2) tube core (thin bright line)
+                        shape
+                            .stroke(p.neonAccent.opacity(tubeAlphaBase * neonFlicker), lineWidth: 2)
+                            .blendMode(.plusLighter)
+                            .mask(shape.stroke(lineWidth: 2))
+
+                        // 3) tight inner glow
+                        shape
+                            .stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 8)
+                            .blur(radius: 10)
+                            .blendMode(.plusLighter)
+                            .mask(shape.stroke(lineWidth: 10))
+
+                        // 4) inner bloom
+                        shape
+                            .stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 16)
+                            .blur(radius: 18)
+                            .blendMode(.plusLighter)
+                            .mask(shape.stroke(lineWidth: 18))
+                    }
+                }
+            )
+
+            // Drop shadow for the sheet (kept; neon is masked, so no tail)
             .shadow(color: .black.opacity(0.35), radius: 24, y: 10)
+
             .padding(.horizontal, 12)
             .padding(.bottom, max(12, geo.safeAreaInsets.bottom + 8)) // keep off the very bottom edge
 
@@ -144,25 +189,68 @@ struct TrueStackExpandedView: View {
             // Smoothen the drag animation
             .animation(.spring(response: 0.35, dampingFraction: 0.9), value: dragTranslation)
             .animation(.spring(response: 0.35, dampingFraction: 0.9), value: dragOffsetY)
+
+            // Neon flicker lifecycle
+            .onAppear { armFlickerIfNeeded() }
+            .onDisappear { flickerArmed = false }
+            .onChange(of: theme.currentID) { _, _ in armFlickerIfNeeded() }
         }
     }
 
-    @ViewBuilder
-        private var panelBackground: some View {
-            // THEME: use theme tint under glass (never overpower)
-            let tint = theme.palette(colorScheme).panelBackgroundTint
-            if #available(iOS 26.0, *), isBetaGlassEnabled {
-                ZStack {
-                    tint // sits “under” real glass
-                    Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 20))
+    // MARK: - Flicker scheduler (subtle, random, panel-only)
+    private func armFlickerIfNeeded() {
+        // Only run flicker when Midnight Neon is active
+        guard theme.currentID == .midnightNeon else {
+            flickerArmed = false
+            neonFlicker = 1.0
+            return
+        }
+        guard !flickerArmed else { return }
+        flickerArmed = true
+        scheduleNextFlicker()
+    }
+
+    private func scheduleNextFlicker() {
+        guard flickerArmed else { return }
+        let delay = Double.random(in: 6.0...14.0)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard flickerArmed else { return }
+            withAnimation(.easeInOut(duration: 0.10)) { neonFlicker = 0.78 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.easeInOut(duration: 0.16)) { neonFlicker = 1.0 }
+                if Bool.random() {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                        withAnimation(.easeInOut(duration: 0.08)) { neonFlicker = 0.88 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.easeInOut(duration: 0.12)) { neonFlicker = 1.0 }
+                            scheduleNextFlicker()
+                        }
+                    }
+                } else {
+                    scheduleNextFlicker()
                 }
-            } else {
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(.ultraThinMaterial)
-                    .background(tint) // subtle tint behind material
             }
         }
-    
+    }
+
+
+    @ViewBuilder
+    private var panelBackground: some View {
+        // THEME: use theme tint under glass (never overpower)
+        let tint = theme.palette(colorScheme).panelBackgroundTint
+        if #available(iOS 26.0, *), isBetaGlassEnabled {
+            ZStack {
+                tint // sits “under” real glass
+                Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 20))
+            }
+        } else {
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.ultraThinMaterial)
+                .background(tint) // subtle tint behind material
+        }
+    }
+
     private func dragGesture(geoHeight: CGFloat) -> some Gesture {
         let threshold: CGFloat = min(220, geoHeight * 0.25)
         return DragGesture(minimumDistance: 5, coordinateSpace: .local)

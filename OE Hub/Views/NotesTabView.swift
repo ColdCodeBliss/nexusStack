@@ -4,6 +4,8 @@ import UIKit
 
 struct NotesTabView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var theme: ThemeManager
 
     // Editor state
     @State private var isAddingNote = false
@@ -48,6 +50,10 @@ struct NotesTabView: View {
         return job.notes.count % colors.count
     }
 
+    // 🌙 Midnight Neon — shared, subtle flicker for tiles in this view
+    @State private var neonFlicker: Double = 1.0
+    @State private var flickerArmed: Bool = false
+
     var body: some View {
         VStack(spacing: 0) {
             // Header row: "Notes" + glassy "+"
@@ -86,7 +92,7 @@ struct NotesTabView: View {
             .padding(.top, 8)
             .padding(.bottom, 4)
 
-            // Your existing grid of notes
+            // Grid of notes
             ScrollView {
                 makeGrid(notes: sortedNotes)
                     .padding()
@@ -95,11 +101,14 @@ struct NotesTabView: View {
         // Keep your existing editors exactly as-is
         .sheet(isPresented: nonBetaSheetIsPresented) { nonBetaSheet }
         .overlay { betaOverlay }
-        .navigationTitle("Notes") // harmless; will be hidden by our inline header if shown in a sheet
+        .navigationTitle("Notes") // harmless; hidden by inline header if shown in a sheet
         .animation(.default, value: job.notes.count)
         .onChange(of: addNoteTrigger) { _, _ in prepareNewNote() }
+        // Neon flicker lifecycle
+        .onAppear { armFlickerIfNeeded() }
+        .onDisappear { flickerArmed = false }
+        .onChange(of: theme.currentID) { _, _ in armFlickerIfNeeded() }
     }
-
 
     // MARK: - Builders
 
@@ -261,6 +270,7 @@ struct NotesTabView: View {
         let fg: Color = .black
         let isGlass = isBetaGlassEnabled
         let radius: CGFloat = 16
+        let neonOn = (theme.currentID == .midnightNeon)
 
         return VStack(alignment: .leading, spacing: 8) {
             Text(note.summary)
@@ -278,8 +288,17 @@ struct NotesTabView: View {
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .stroke(isGlass ? Color.white.opacity(0.10) : Color.white.opacity(0.20), lineWidth: 1)
         )
-        .shadow(color: (isGlass ? Color.black.opacity(0.25) : Color.black.opacity(0.15)),
-                radius: (isGlass ? 14 : 5), x: 0, y: (isGlass ? 8 : 0))
+
+        // 🌙 Midnight Neon tube + glow (contained; no trailing)
+        .overlay(neonOverlayTile(radius: radius))
+
+        // Keep legacy shadow unless neon is active (neon handles glow)
+        .shadow(
+            color: neonOn ? .clear
+                          : (isGlass ? .black.opacity(0.25) : .black.opacity(0.15)),
+            radius: neonOn ? 0 : (isGlass ? 14 : 5),
+            x: 0, y: neonOn ? 0 : (isGlass ? 8 : 0)
+        )
         .accessibilityElement(children: .combine)
     }
 
@@ -302,6 +321,47 @@ struct NotesTabView: View {
         } else {
             // Standard (non-Beta): solid tint gradient
             RoundedRectangle(cornerRadius: radius, style: .continuous).fill(tint.gradient)
+        }
+    }
+
+    // 🌙 Midnight Neon overlay for a single tile (tube + inner glows, masked)
+    @ViewBuilder
+    private func neonOverlayTile(radius: CGFloat) -> some View {
+        if theme.currentID == .midnightNeon {
+            let p = theme.palette(colorScheme)
+            let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+            // Tuned alphas for tiles
+            let borderAlpha    = isBetaGlassEnabled ? 0.24 : 0.32
+            let tubeAlpha      = isBetaGlassEnabled ? 0.55 : 0.65
+            let innerGlowAlpha = isBetaGlassEnabled ? 0.22 : 0.28
+            let bloomAlpha     = isBetaGlassEnabled ? 0.14 : 0.20
+
+            Group {
+                // crisp inset border
+                shape
+                    .strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+
+                // tube core (thin bright line)
+                shape
+                    .stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                    .blendMode(.plusLighter)
+                    .mask(shape.stroke(lineWidth: 2))
+
+                // tight inner glow
+                shape
+                    .stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 8)
+                    .blur(radius: 9)
+                    .blendMode(.plusLighter)
+                    .mask(shape.stroke(lineWidth: 10))
+
+                // inner bloom
+                shape
+                    .stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 14)
+                    .blur(radius: 16)
+                    .blendMode(.plusLighter)
+                    .mask(shape.stroke(lineWidth: 16))
+            }
         }
     }
 
@@ -483,5 +543,41 @@ struct NotesTabView: View {
     private func safeIndex(_ idx: Int) -> Int {
         guard !colors.isEmpty else { return 0 }
         return ((idx % colors.count) + colors.count) % colors.count
+    }
+
+    // MARK: - Flicker scheduler
+
+    private func armFlickerIfNeeded() {
+        guard theme.currentID == .midnightNeon else {
+            flickerArmed = false
+            neonFlicker = 1.0
+            return
+        }
+        guard !flickerArmed else { return }
+        flickerArmed = true
+        scheduleNextFlicker()
+    }
+
+    private func scheduleNextFlicker() {
+        guard flickerArmed else { return }
+        let delay = Double.random(in: 6.0...14.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard flickerArmed else { return }
+            withAnimation(.easeInOut(duration: 0.10)) { neonFlicker = 0.78 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.easeInOut(duration: 0.16)) { neonFlicker = 1.0 }
+                if Bool.random() {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                        withAnimation(.easeInOut(duration: 0.08)) { neonFlicker = 0.88 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.easeInOut(duration: 0.12)) { neonFlicker = 1.0 }
+                            scheduleNextFlicker()
+                        }
+                    }
+                } else {
+                    scheduleNextFlicker()
+                }
+            }
+        }
     }
 }
