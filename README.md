@@ -1,38 +1,14 @@
 nexusStack - Productivity Task Manager
 
-<style>
-* {
-  box-sizing: border-box;
-}
+| HomeView | Liquid Glass |
+|---------:|:------------|
+| <img src="Screenshots/HomeView.png" alt="HomeView" width="400"> | <img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="400"> |
 
-/* Create two equal columns that floats next to each other */
-.column {
-  float: left;
-  width: 50%;
-  padding: 10px;
-  height: 300px; /* Should be removed. Only for demonstration */
-}
-
-/* Clear floats after the columns */
-.row:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-</style>
-
-
-Step 2.
-
-<div class="row">
-  <div class="column"><img src="Screenshots/HomeView.png" alt="HomeView" width="482" height="1049"></div>
-  <div class="column"><img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="482" height="1049"></div>
-</div>
-
-<!--*<img src="Screenshots/HomeView.png" alt="HomeView" width="482" height="1049"><img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="482" height="1049">
+<!--<img src="Screenshots/HomeView.png" alt="HomeView" width="482" height="1049"><img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="482" height="1049">
 <img src="Screenshots/TrueStackDeckView.png" alt="CardDeckView" width="482" height="1049">-->
 
 nexusStack is a sleek productivity app designed to simplify task and project management. Built for iOS, it helps users create and organize jobs with deliverables, checklists, notes, and due dates. The app offers customizable task colors, reminder notifications, and options to mark tasks as complete or delete them, all within an intuitive interface featuring tabs for due tasks, checklists, notes, and job details.
+
 Features
 
     Job Management: Create and manage jobs with associated tasks.
