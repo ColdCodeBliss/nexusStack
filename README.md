@@ -1,10 +1,10 @@
 nexusStack - Productivity Task Manager
 
-| HomeView | Liquid Glass |
+| Home View | Liquid Glass |
 |:---------|:------------|
 | <img src="Screenshots/HomeView.png" alt="HomeView" width="400"> | <img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="400"> |
 
-| CardDeckView |
+| Card Deck View |
 |:---------|
 | <img src="Screenshots/TrueStackDeckView.png" alt="CardDeckView" width="400"> |
 
