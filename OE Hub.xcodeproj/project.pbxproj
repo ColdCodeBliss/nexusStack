@@ -30,6 +30,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		12DAB3EA2EC2FBAA00687A3B /* Screenshots */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Screenshots;
+			sourceTree = "<group>";
+		};
 		12E9B85C2E6B8C0B00AB4AED /* OE Hub */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "OE Hub";
@@ -75,6 +80,7 @@
 		12E9B8512E6B8C0B00AB4AED = {
 			isa = PBXGroup;
 			children = (
+				12DAB3EA2EC2FBAA00687A3B /* Screenshots */,
 				12E9B85C2E6B8C0B00AB4AED /* OE Hub */,
 				12E9B86C2E6B8C0D00AB4AED /* OE HubTests */,
 				12E9B8762E6B8C0D00AB4AED /* OE HubUITests */,
@@ -108,6 +114,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				12DAB3EA2EC2FBAA00687A3B /* Screenshots */,
 				12E9B85C2E6B8C0B00AB4AED /* OE Hub */,
 			);
 			name = "OE Hub";
