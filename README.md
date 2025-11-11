@@ -25,10 +25,10 @@ Features
 
 Installation
 
-    Clone the repository: git clone https://github.com/ColdCodeBliss/OE-Hub.git
+    Clone the repository: git clone https://github.com/ColdCodeBliss/nexusStack.git
     Open the project in Xcode.
     Ensure you have Xcode 18.4 or later installed.
-    Build and run on an iPhone simulator (e.g., iPhone 16).
+    Build and run on an iPhone simulator (e.g., iPhone 17).
 
 Usage
 
