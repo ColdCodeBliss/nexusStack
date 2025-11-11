@@ -43,27 +43,58 @@ struct JobRowView: View {
                 .stroke(borderColor, lineWidth: 1)
         )
 
-        // NEW: Midnight Neon accent border (adds on top of original)
-        .overlay(
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .strokeBorder(
-                    theme.currentID == .midnightNeon
-                    ? p.neonAccent.opacity(isBetaGlassEnabled ? 0.28 : 0.35)
-                    : .clear,
-                    lineWidth: 1
-                )
-        )
+        // ✨ Midnight Neon aesthetic (layered, exact-fit; no layout changes)
+        .overlay(alignment: .topLeading) {
+            if theme.currentID == .midnightNeon {
+                let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
 
+                // 0) Subtle inset border (inside bounds)
+                shape
+                    .strokeBorder(p.neonAccent.opacity(isBetaGlassEnabled ? 0.24 : 0.32), lineWidth: 1)
+
+                // 1) "Tube" core — bright on the edge
+                shape
+                    .stroke(p.neonAccent.opacity(0.95), lineWidth: 2)
+
+                // 2) Tight inner glow — ring-masked + clipped to the row shape
+                shape
+                    .stroke(p.neonAccent.opacity(0.55), lineWidth: 8)
+                    .blur(radius: 6)
+                    .mask(
+                        shape
+                            .inset(by: 8 / 2)
+                            .stroke(lineWidth: 8)
+                    )
+                    .compositingGroup()
+                    .clipShape(shape)
+
+                // 3) Inner bloom — wider, softer wash (still clipped)
+                shape
+                    .stroke(p.neonAccent.opacity(0.28), lineWidth: 18)
+                    .blur(radius: 18)
+                    .mask(
+                        shape
+                            .inset(by: 18 / 2)
+                            .stroke(lineWidth: 18)
+                    )
+                    .compositingGroup()
+                    .clipShape(shape)
+
+                // 4) Misty OUTER glow around the rim — uses the card color
+                let glowColor = tint
+                shape
+                    .stroke(glowColor.opacity(0.15), lineWidth: 10)     // faint geometry for shadow mask
+                    .shadow(color: glowColor.opacity(0.28), radius: 10,  x: 0, y: 0) // tight aura
+                    .shadow(color: glowColor.opacity(0.20), radius: 18, x: 0, y: 0) // mid bloom
+                    .shadow(color: glowColor.opacity(0.12), radius: 30, x: 0, y: 0) // wide feather
+                    .blendMode(.plusLighter)
+            }
+        }
 
         // Original floating bubble shadow (kept)
         .shadow(color: currentShadowColor, radius: shadowRadius, y: shadowY)
 
-        // NEW: Neon glow (separate shadow so it layers with the existing one)
-        .shadow(
-            color: theme.currentID == .midnightNeon ? p.glowColor : .clear,
-            radius: isBetaGlassEnabled ? 10 : 14,
-            y: 0
-        )
+        // (Removed the previous neon .shadow block; replaced by overlay above.)
 
         .padding(.vertical, 2)
     }

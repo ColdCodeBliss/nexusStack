@@ -413,24 +413,24 @@ struct TrueStackDeckView: View {
         .clipped()
         .animation(nil, value: topCardContentHeight)
 
-        // --- Midnight Neon border + exact-fit "neon tube" (top card only, no shadow) ---
+        // --- Midnight Neon border + exact-fit "neon tube" (all cards) + misty outer glow ---
         .overlay(alignment: .topLeading) {
             if theme.currentID == .midnightNeon {
                 let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
                 let w = size.width
                 let h = size.height
 
-                // 0) Subtle inset border (unchanged behavior)
+                // 0) Subtle inset border (unchanged)
                 shape
                     .strokeBorder(p.neonAccent.opacity(isBetaGlassEnabled ? 0.24 : 0.32), lineWidth: 1)
                     .frame(width: w, height: h, alignment: .topLeading)
 
-                // 1) "Tube" core — thin, bright line right on the edge
+                // 1) "Tube" core — bright line on the edge (unchanged)
                 shape
                     .stroke(p.neonAccent.opacity(0.95), lineWidth: 2)
                     .frame(width: w, height: h, alignment: .topLeading)
 
-                // 2) Tight glow — hugs the tube closely
+                // 2) Tight inner glow — hugs the tube (unchanged)
                 shape
                     .stroke(p.neonAccent.opacity(0.55), lineWidth: 8)
                     .blur(radius: 6)
@@ -440,11 +440,11 @@ struct TrueStackDeckView: View {
                             .stroke(lineWidth: 8)
                             .frame(width: w, height: h, alignment: .topLeading)
                     )
-                    .compositingGroup()     // isolate blur
-                    .clipShape(shape)       // hard-clip to card
+                    .compositingGroup()
+                    .clipShape(shape)
                     .frame(width: w, height: h, alignment: .topLeading)
 
-                // 3) Outer bloom — wider, softer wash
+                // 3) Inner bloom — wider, softer (unchanged)
                 shape
                     .stroke(p.neonAccent.opacity(0.28), lineWidth: 18)
                     .blur(radius: 18)
@@ -457,8 +457,21 @@ struct TrueStackDeckView: View {
                     .compositingGroup()
                     .clipShape(shape)
                     .frame(width: w, height: h, alignment: .topLeading)
+
+                // 4) NEW: Misty OUTER glow that wraps the rim evenly (no alignment change)
+                //    Uses zero-offset shadows on a faint stroke so the glow blooms outside.
+                //    No clip on this layer so the light can extend off the card.
+                let glowColor = color(for: job.effectiveColorIndex)   // glow keyed to card color
+                shape
+                    .stroke(glowColor.opacity(0.15), lineWidth: 10)    // faint geometry for shadow mask
+                    .shadow(color: glowColor.opacity(0.28), radius: 10,  x: 0, y: 0)  // tight aura
+                    .shadow(color: glowColor.opacity(0.20), radius: 18, x: 0, y: 0)  // mid bloom
+                    .shadow(color: glowColor.opacity(0.12), radius: 30, x: 0, y: 0)  // wide feather
+                    .blendMode(.plusLighter)                           // gentle additive feel
+                    .frame(width: w, height: h, alignment: .topLeading)
             }
         }
+
 
         .opacity(isTop ? 1.0 : nonTopOpacity)
         .matchedGeometryEffect(id: job.persistentModelID, in: deckNS)
