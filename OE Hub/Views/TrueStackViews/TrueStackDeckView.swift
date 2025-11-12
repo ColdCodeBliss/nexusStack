@@ -226,15 +226,28 @@ struct TrueStackDeckView: View {
                             ? min(g.size.width * 0.12, 100)
                             : min(g.size.width * 0.21, 96)
 
-                        Image("nexusStack_logo")
+                        // THEME-AWARE LOGO
+                        let isNeon = (theme.currentID == .midnightNeon)
+                        let logoAsset = isNeon ? "nexusStack_logo_neon_b" : "nexusStack_logo"
+                        let neonScaleComp: CGFloat = 1.20   // tweak 0.84–0.95 if needed
+                        let p = theme.palette(colorScheme)
+
+                        Image(logoAsset)
                             .resizable()
                             .scaledToFit()
                             .frame(width: logoWidth)
+                            .scaleEffect(isNeon ? neonScaleComp : 1.0)                 // keep visual size consistent
                             .position(x: g.size.width / 2, y: logoY)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
+                            .transition(.opacity)
+                            .animation(.easeInOut(duration: 0.25), value: theme.currentID)
+                            // subtle neon pop when active
+                            .shadow(color: isNeon ? p.glowColor : .clear, radius: 18, y: 0)
+                            .shadow(color: isNeon ? p.neonAccent.opacity(0.14) : .clear, radius: 5, y: 0)
                             .zIndex(2)
                     }
+
                 }
                 .ignoresSafeArea()
             }

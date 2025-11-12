@@ -34,8 +34,10 @@ struct HomeView: View {
     @AppStorage("isTrueStackEnabled") private var isTrueStackEnabled = false
 
     // Existing hero metrics (used on iPhone flow only)
-    private let heroLogoHeight: CGFloat = 120   // logo size
+    private let heroLogoHeight: CGFloat = 120   // logo size (applies to both standard & neon)
     private let heroTopOffset: CGFloat = 0      // distance from button row
+    // NEW: cap the logo’s width so neon art can’t appear wider than standard
+    private let heroLogoMaxWidth: CGFloat = 420
 
     // MARK: - Init: move #Predicate here (reduces compiler load)
     init() {
@@ -50,8 +52,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        // ✅ STEP 6: When Beta Glass *and* True Stack are ON (iOS 26+),
-        //            swap the home UI for the new Card Deck host.
+        // ✅ When Beta Glass *and* True Stack are ON (iOS 26+), show the Card Deck host.
         if #available(iOS 26.0, *), isBetaGlassEnabled && isTrueStackEnabled {
             TrueStackDeckHost(jobs: jobs)
                 .preferredColorScheme(isDarkMode ? .dark : .light)
@@ -80,7 +81,7 @@ struct HomeView: View {
             NavigationStack {
                 ZStack {
                     VStack {
-                        jobList               // same list as before
+                        jobList
                         jobHistoryButton
                     }
                     // Push content down to sit under the overlayed logo
@@ -90,7 +91,7 @@ struct HomeView: View {
                     if jobs.isEmpty {
                         iPhoneEmptyState(glassOn: isBetaGlassEnabled)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .allowsHitTesting(false) // don't block taps to +
+                            .allowsHitTesting(false)
                             .transition(.opacity)
                     }
                 }
@@ -108,7 +109,14 @@ struct HomeView: View {
 
                 // Overlay hero logo (iPhone only)
                 .overlay(alignment: .top) {
+                    // Wrap in a strict frame so both standard & neon assets render at identical size
                     HeroLogoRow(height: heroLogoHeight)
+                        .frame(
+                            maxWidth: heroLogoMaxWidth,
+                            minHeight: heroLogoHeight,
+                            maxHeight: heroLogoHeight,
+                            alignment: .center
+                        )
                         .padding(.top, heroTopOffset)
                         .padding(.horizontal, 16)
                         .offset(y: logoYOffset)
@@ -235,7 +243,6 @@ struct HomeView: View {
                let job = jobs.first(where: { $0.persistentModelID == id }) {
                 JobDetailView(job: job)
             } else {
-                // Empty state on iPad before selection
                 ContentUnavailableView(
                     "Select a Stack",
                     systemImage: "folder",
@@ -274,14 +281,12 @@ struct HomeView: View {
                     .zIndex(2)
             }
         }
-        // Help as sheet when Beta OFF
         .sheet(isPresented: Binding(
             get: { showHelp && !isBetaGlassEnabled },
             set: { if !$0 { showHelp = false } }
         )) {
             HelpView()
         }
-        // Help as floating glass panel when Beta ON
         .overlay {
             if showHelp && isBetaGlassEnabled {
                 HelpPanel(isPresented: $showHelp)
@@ -349,7 +354,6 @@ struct HomeView: View {
             Menu {
                 Button("Settings") { showSettings = true }
                 Button("Help") { showHelp = true }
-               // Button("Option 2") { /* future */ }
             } label: {
                 Label("Menu", systemImage: "line.horizontal.3")
             }
@@ -484,8 +488,7 @@ private struct iPhoneEmptyState: View {
 }
 
 // MARK: - True Stack Deck Host (Beta-only gate)
-// This tiny wrapper keeps HomeView.body clean and gives a subtle background.
-// Requires you to add the new TrueStackDeckView in your project.
+
 @available(iOS 26.0, *)
 private struct TrueStackDeckHost: View {
     let jobs: [Job]
@@ -503,4 +506,3 @@ private struct TrueStackDeckHost: View {
         }
     }
 }
-

@@ -3,7 +3,13 @@ import SwiftUI
 struct HelpPanel: View {
     @Binding var isPresented: Bool
 
-    @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false   // Real glass (iOS 26+)
+    @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false   // Real glass (iOS 26+)
+    @EnvironmentObject private var theme: ThemeManager
+    @Environment(\.colorScheme) private var colorScheme
+
+    // 🌙 Midnight Neon — shared flicker for panel + cards
+    @State private var neonFlicker: Double = 1.0
+    @State private var flickerArmed: Bool = false
 
     var body: some View {
         ZStack {
@@ -67,7 +73,7 @@ struct HelpPanel: View {
                                                   title: "Target",
                                                   text: "Re-centers the canvas on the root node so you can quickly find your map.")
                                     }
-                                    .padding(.leading, 22) // slight visual indent to show these belong to Mind Map
+                                    .padding(.leading, 22)
                                 }
 
                                 tipRow(icon: "note.text", title: "Notes",
@@ -108,9 +114,15 @@ struct HelpPanel: View {
             .background(panelBackground)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.10), lineWidth: 1))
+            // 🌙 Midnight Neon on the outer panel
+            .overlay(neonOverlayPanel(radius: 20))
             .shadow(color: .black.opacity(0.35), radius: 28, y: 10)
             .padding(.horizontal, 16)
             .transition(.scale.combined(with: .opacity))
+            // Flicker lifecycle
+            .onAppear { armFlickerIfNeeded() }
+            .onDisappear { flickerArmed = false }
+            .onChange(of: theme.currentID) { _, _ in armFlickerIfNeeded() }
         }
     }
 
@@ -120,21 +132,23 @@ struct HelpPanel: View {
     private var panelBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 20))
-        }
-        else {
+        } else {
             RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground))
         }
     }
 
     @ViewBuilder
     private func Card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        let radius: CGFloat = 14
         VStack(alignment: .leading, spacing: 10) {
             content()
         }
         .padding(12)
         .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.08)))
+        .clipShape(RoundedRectangle(cornerRadius: radius))
+        .overlay(RoundedRectangle(cornerRadius: radius).stroke(.white.opacity(0.08)))
+        // 🌙 Midnight Neon on inner cards
+        .overlay(neonOverlayCard(radius: radius))
     }
 
     @ViewBuilder
@@ -162,7 +176,7 @@ struct HelpPanel: View {
         }
     }
 
-    // NEW: small, indented sub-tip row used under “Mind Map”
+    // small, indented sub-tip row used under “Mind Map”
     private func subTipRow(icon: String, title: String, text: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
@@ -172,6 +186,103 @@ struct HelpPanel: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.callout.weight(.semibold))
                 Text(text).font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Neon overlays (panel + inner cards)
+
+    private func neonOverlayPanel(radius: CGFloat) -> some View {
+        guard theme.currentID == .midnightNeon else { return AnyView(EmptyView()) }
+        let p = theme.palette(colorScheme)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+        // Panel gets slightly softer glow than small cards
+        let borderAlpha: Double    = isBetaGlassEnabled ? 0.22 : 0.28
+        let tubeAlpha: Double      = isBetaGlassEnabled ? 0.48 : 0.58
+        let innerGlowAlpha: Double = isBetaGlassEnabled ? 0.18 : 0.24
+        let bloomAlpha: Double     = isBetaGlassEnabled ? 0.12 : 0.18
+
+        let overlay = ZStack {
+            shape.strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+            shape.stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 2))
+            shape.stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 10)
+                .blur(radius: 12)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 12))
+            shape.stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 18)
+                .blur(radius: 18)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 18))
+        }
+        .allowsHitTesting(false)
+
+        return AnyView(overlay)
+    }
+
+    private func neonOverlayCard(radius: CGFloat) -> some View {
+        guard theme.currentID == .midnightNeon else { return AnyView(EmptyView()) }
+        let p = theme.palette(colorScheme)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+        let borderAlpha: Double    = isBetaGlassEnabled ? 0.24 : 0.32
+        let tubeAlpha: Double      = isBetaGlassEnabled ? 0.55 : 0.65
+        let innerGlowAlpha: Double = isBetaGlassEnabled ? 0.22 : 0.28
+        let bloomAlpha: Double     = isBetaGlassEnabled ? 0.14 : 0.20
+
+        let overlay = ZStack {
+            shape.strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+            shape.stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 2))
+            shape.stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 8)
+                .blur(radius: 9)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 10))
+            shape.stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 14)
+                .blur(radius: 16)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 16))
+        }
+        .allowsHitTesting(false)
+
+        return AnyView(overlay)
+    }
+
+    // MARK: - Flicker scheduler
+
+    private func armFlickerIfNeeded() {
+        guard theme.currentID == .midnightNeon else {
+            flickerArmed = false
+            neonFlicker = 1.0
+            return
+        }
+        guard !flickerArmed else { return }
+        flickerArmed = true
+        scheduleNextFlicker()
+    }
+
+    private func scheduleNextFlicker() {
+        guard flickerArmed else { return }
+        let delay = Double.random(in: 6.0...14.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard flickerArmed else { return }
+            withAnimation(.easeInOut(duration: 0.10)) { neonFlicker = 0.78 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.easeInOut(duration: 0.16)) { neonFlicker = 1.0 }
+                if Bool.random() {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                        withAnimation(.easeInOut(duration: 0.08)) { neonFlicker = 0.88 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.easeInOut(duration: 0.12)) { neonFlicker = 1.0 }
+                            scheduleNextFlicker()
+                        }
+                    }
+                } else {
+                    scheduleNextFlicker()
+                }
             }
         }
     }

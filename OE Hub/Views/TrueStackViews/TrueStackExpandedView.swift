@@ -31,7 +31,7 @@ struct TrueStackExpandedView: View {
     @State private var dragOffsetY: CGFloat = 0
     @GestureState private var dragTranslation: CGSize = .zero
 
-    // MARK: Midnight Neon — subtle flicker (panel-only)
+    // MARK: Midnight Neon — subtle flicker (shared by panel + action rows)
     @State private var neonFlicker: Double = 1.0
     @State private var flickerArmed: Bool = false
 
@@ -77,36 +77,43 @@ struct TrueStackExpandedView: View {
                         ActionRow(system: "calendar",
                                   title: "Due",
                                   blurb: "Deliverables & reminders",
+                                  neonFlicker: neonFlicker,
                                   action: openDue)
 
                         ActionRow(system: "checkmark.square",
                                   title: "Checklist",
                                   blurb: "Quick to-do items per stack",
+                                  neonFlicker: neonFlicker,
                                   action: openChecklist)
 
                         ActionRow(system: "point.topleft.down.curvedto.point.bottomright.up",
                                   title: "Mind Map",
                                   blurb: "Zoomable canvas of ideas",
+                                  neonFlicker: neonFlicker,
                                   action: openMindMap)
 
                         ActionRow(system: "note.text",
                                   title: "Notes",
                                   blurb: "Rich text with basic formatting",
+                                  neonFlicker: neonFlicker,
                                   action: openNotes)
 
                         ActionRow(system: "info.circle",
                                   title: "Info",
                                   blurb: "Metadata, pay, role & more",
+                                  neonFlicker: neonFlicker,
                                   action: openInfo)
 
                         ActionRow(system: "chevron.left.slash.chevron.right",
                                   title: "GitHub",
                                   blurb: "Browse repo files & recents",
+                                  neonFlicker: neonFlicker,
                                   action: openGitHub)
 
                         ActionRow(system: "link",
                                   title: "Confluence",
                                   blurb: "Save up to 5 links per stack",
+                                  neonFlicker: neonFlicker,
                                   action: openConfluence)
                     }
                     .padding(.horizontal, 12)
@@ -197,9 +204,8 @@ struct TrueStackExpandedView: View {
         }
     }
 
-    // MARK: - Flicker scheduler (subtle, random, panel-only)
+    // MARK: - Flicker scheduler (subtle, random)
     private func armFlickerIfNeeded() {
-        // Only run flicker when Midnight Neon is active
         guard theme.currentID == .midnightNeon else {
             flickerArmed = false
             neonFlicker = 1.0
@@ -234,23 +240,6 @@ struct TrueStackExpandedView: View {
         }
     }
 
-
-    @ViewBuilder
-    private var panelBackground: some View {
-        // THEME: use theme tint under glass (never overpower)
-        let tint = theme.palette(colorScheme).panelBackgroundTint
-        if #available(iOS 26.0, *), isBetaGlassEnabled {
-            ZStack {
-                tint // sits “under” real glass
-                Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 20))
-            }
-        } else {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .background(tint) // subtle tint behind material
-        }
-    }
-
     private func dragGesture(geoHeight: CGFloat) -> some Gesture {
         let threshold: CGFloat = min(220, geoHeight * 0.25)
         return DragGesture(minimumDistance: 5, coordinateSpace: .local)
@@ -268,10 +257,17 @@ struct TrueStackExpandedView: View {
 
 @available(iOS 26.0, *)
 private struct ActionRow: View {
+    @EnvironmentObject private var theme: ThemeManager
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
+
     let system: String
     let title: String
     let blurb: String
+    let neonFlicker: Double
     let action: () -> Void
+
+    private let radius: CGFloat = 16
 
     var body: some View {
         Button(action: action) {
@@ -296,7 +292,59 @@ private struct ActionRow: View {
             }
             .padding(12)
         }
-        .glassButton()
+        .glassButton() // existing glass styling (kept)
+
+        // Hairline stroke (kept for non-neon themes)
+        .overlay(
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+        )
+
+        // 🌙 Midnight Neon tube + inner glows (masked to the button’s rounded rect)
+        .overlay(neonOverlayRow(radius: radius, neonFlicker: neonFlicker))
+
         .accessibilityElement(children: .combine)
+    }
+
+    // Concrete overlay to avoid generic-inference issues
+    private func neonOverlayRow(radius: CGFloat, neonFlicker: Double) -> some View {
+        guard theme.currentID == .midnightNeon else { return AnyView(EmptyView()) }
+
+        let p = theme.palette(colorScheme)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+        let borderAlpha    = isBetaGlassEnabled ? 0.24 : 0.32
+        let tubeAlpha      = isBetaGlassEnabled ? 0.55 : 0.65
+        let innerGlowAlpha = isBetaGlassEnabled ? 0.22 : 0.28
+        let bloomAlpha     = isBetaGlassEnabled ? 0.14 : 0.20
+
+        let overlay = ZStack {
+            // 1) crisp inset border
+            shape
+                .strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+
+            // 2) tube core (thin bright line)
+            shape
+                .stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 2))
+
+            // 3) tight inner glow
+            shape
+                .stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 8)
+                .blur(radius: 9)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 10))
+
+            // 4) inner bloom
+            shape
+                .stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 14)
+                .blur(radius: 16)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 16))
+        }
+        .allowsHitTesting(false)
+
+        return AnyView(overlay)
     }
 }
