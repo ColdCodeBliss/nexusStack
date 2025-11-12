@@ -83,7 +83,6 @@ struct HomeView: View {
                 ZStack {
                     VStack {
                         jobList
-                        jobHistoryButton
                     }
                     // Push content down to sit under the overlayed logo
                     .padding(.top, max(0, heroLogoHeight + heroTopOffset + listGapBelowLogo + logoYOffset))
@@ -96,6 +95,11 @@ struct HomeView: View {
                             .transition(.opacity)
                     }
                 }
+                .overlay(alignment: .bottom) {
+                    stackHistoryOverlay(bottomInset: geo.safeAreaInsets.bottom)
+                        .ignoresSafeArea(edges: .bottom)   // let it hug the bottom edge
+                }
+
                 .navigationTitle("")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { toolbarContent }
@@ -404,6 +408,30 @@ struct HomeView: View {
             }
         }
     }
+    
+    @ViewBuilder
+    private func stackHistoryOverlay(bottomInset: CGFloat) -> some View {
+        if !deletedJobs.isEmpty {
+            Button { showJobHistory = true } label: {
+                HStack(spacing: 8) {
+                    Text("Stack History").font(.subheadline)
+                    Image(systemName: "chevron.right").font(.subheadline)
+                }
+                .foregroundStyle(.blue)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .opacity(0.9)
+                )
+            }
+            .padding(.horizontal, 16)
+            // Sit just above the very bottom; tweak the "bump" if you want it even lower.
+            .padding(.bottom, bottomInset > 0 ? max(0, bottomInset - 50) : 1)
+        }
+    }
+
 
     // MARK: - Bindings
 
