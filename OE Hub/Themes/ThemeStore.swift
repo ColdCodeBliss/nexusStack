@@ -2,108 +2,143 @@
 //  ThemeStore.swift
 //  OE Hub
 //
-//  Created by Ryan Bliss on 11/9/25.
-//
 
-
-import Foundation
-import StoreKit
 import SwiftUI
+import StoreKit
+
+// Centralize product IDs to avoid typos and ease future expansion.
+private enum PID {
+    static let midnightNeon = "com.coldcodebliss.nexusstack.theme.midnightNeon"
+}
+
+// If/when you add more theme IAPs, append here.
+private let productIDs: Set<String> = [PID.midnightNeon]
 
 @MainActor
 final class ThemeStore: ObservableObject {
-
-    // MARK: - Configure your product IDs
-    // App Store Connect → In-App Purchases → Consumable/Non-consumable
-    // For a theme, make this a **non-consumable**.
-    private let productIDs: Set<String> = [
-        "com.coldcodebliss.nexusstack.theme.midnightNeon"
-    ]
-
     // MARK: - Published state
-    @Published var isLoading = false
     @Published var products: [Product] = []
     @Published var purchased: Set<String> = []
+    @Published var isLoading = false
     @Published var lastMessage: String?
 
-    // Convenience accessors
+    // MARK: - Live updates
+    private var updatesTask: Task<Void, Never>?
+
+    deinit {
+        updatesTask?.cancel()
+    }
+
+    // MARK: - Computed helpers
     var midnightNeonProduct: Product? {
-        products.first(where: { $0.id == "com.coldcodebliss.nexusstack.theme.midnightNeon" })
+        products.first(where: { $0.id == PID.midnightNeon })
     }
 
     var isMidnightNeonUnlocked: Bool {
-        purchased.contains("com.coldcodebliss.nexusstack.theme.midnightNeon")
+        purchased.contains(PID.midnightNeon)
     }
 
-    // MARK: - Loading / Entitlements
+    // MARK: - Lifecycle
     func load() async {
         guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
+
         do {
-            let fetched = try await Product.products(for: Array(productIDs))
-            // Deterministic order if you later add more themes
-            products = fetched.sorted(by: { $0.displayName < $1.displayName })
+            products = try await Product.products(for: Array(productIDs))
             await refreshEntitlements()
+            startObservingUpdates()
+            lastMessage = nil
         } catch {
-            lastMessage = "Unable to load themes. (\(error.localizedDescription))"
+            lastMessage = "Failed to load products: \(error.localizedDescription)"
         }
     }
 
-    func refreshEntitlements() async {
-        var owned: Set<String> = []
-        for id in productIDs {
-            if let result = try? await Transaction.latest(for: id) {
+    func startObservingUpdates() {
+        updatesTask?.cancel()
+        updatesTask = Task { [weak self] in
+            for await result in Transaction.updates {
+                guard let self else { continue }
                 switch result {
-                case .verified(let t):
-                    if t.revocationDate == nil {
-                        owned.insert(id)
+                case .verified(let transaction):
+                    guard productIDs.contains(transaction.productID) else { continue }
+                    await MainActor.run {
+                        _ = self.purchased.insert(transaction.productID)
                     }
+                    await transaction.finish()
+                    // Optional: auto-select when update for Midnight Neon arrives
+                    // if transaction.productID == PID.midnightNeon { ThemeManager.shared.select(.midnightNeon) }
                 case .unverified:
+                    // Ignore unverified updates; keep UI stable.
                     break
                 }
+            }
+        }
+    }
+
+    // Current entitlements are perfect for non-consumables
+    func refreshEntitlements() async {
+        var owned = Set<String>()
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let t) = result,
+               productIDs.contains(t.productID),
+               t.revocationDate == nil {
+                owned.insert(t.productID)
             }
         }
         purchased = owned
     }
 
-    // MARK: - Purchase
-    func purchaseMidnightNeon(theme: ThemeManager) async {
-        guard let product = midnightNeonProduct else { return }
+    // MARK: - Purchasing
+    /// Purchases the Midnight Neon theme and selects it on success.
+    /// - Returns: `true` if unlocked & applied.
+    @discardableResult
+    func purchaseMidnightNeon(theme: ThemeManager) async -> Bool {
+        guard let product = midnightNeonProduct else {
+            lastMessage = "Product unavailable"
+            return false
+        }
+
         do {
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
                 switch verification {
                 case .verified(let transaction):
-                    purchased.insert(product.id)
+                    purchased.insert(transaction.productID)
                     await transaction.finish()
-                    // Select immediately on success
+                    // Apply the theme immediately
                     theme.select(.midnightNeon)
-                    lastMessage = "Midnight Neon unlocked. 🌌"
-                case .unverified(_, let error):
-                    lastMessage = "Purchase could not be verified. (\(error.localizedDescription))"
+                    lastMessage = "Midnight Neon unlocked"
+                    return true
+                case .unverified:
+                    lastMessage = "Purchase could not be verified"
+                    return false
                 }
             case .userCancelled:
-                lastMessage = nil
+                lastMessage = "Purchase cancelled"
+                return false
             case .pending:
-                lastMessage = "Your purchase is pending."
+                lastMessage = "Purchase pending"
+                return false
             @unknown default:
-                lastMessage = "Unknown purchase state."
+                lastMessage = "Purchase failed"
+                return false
             }
         } catch {
-            lastMessage = "Purchase failed. (\(error.localizedDescription))"
+            lastMessage = "Purchase error: \(error.localizedDescription)"
+            return false
         }
     }
 
     // MARK: - Restore
-    func restore() async {
+    func restorePurchases() async {
         do {
             try await AppStore.sync()
             await refreshEntitlements()
-            lastMessage = "Purchases restored."
+            lastMessage = "Purchases restored"
         } catch {
-            lastMessage = "Restore failed. (\(error.localizedDescription))"
+            lastMessage = "Restore failed: \(error.localizedDescription)"
         }
     }
 }
