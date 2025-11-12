@@ -485,7 +485,7 @@ struct TrueStackDeckView: View {
                     .mask(
                         shape
                             .inset(by: 18 / 2)
-                            .stroke(lineWidth: 18)
+                            .stroke(lineWidth: 9)
                             .frame(width: w, height: h, alignment: .topLeading)
                     )
                     .compositingGroup()
