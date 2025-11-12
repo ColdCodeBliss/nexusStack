@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1242D4212EC4FA51006FCB1C /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 1242D4202EC4FA51006FCB1C /* .gitignore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		12E9B86A2E6B8C0D00AB4AED /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1242D4202EC4FA51006FCB1C /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		12E9B85A2E6B8C0B00AB4AED /* OE Hub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "OE Hub.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		12E9B8692E6B8C0D00AB4AED /* OE HubTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "OE HubTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		12E9B8732E6B8C0D00AB4AED /* OE HubUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "OE HubUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -85,6 +90,7 @@
 				12E9B86C2E6B8C0D00AB4AED /* OE HubTests */,
 				12E9B8762E6B8C0D00AB4AED /* OE HubUITests */,
 				12E9B85B2E6B8C0B00AB4AED /* Products */,
+				1242D4202EC4FA51006FCB1C /* .gitignore */,
 			);
 			sourceTree = "<group>";
 		};
@@ -219,6 +225,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1242D4212EC4FA51006FCB1C /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
