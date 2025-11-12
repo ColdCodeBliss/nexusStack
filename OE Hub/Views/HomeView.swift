@@ -8,6 +8,7 @@ struct HomeView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var hSize
+    @EnvironmentObject private var theme: ThemeManager
 
     // UI State
     @State private var isRenaming = false
@@ -36,7 +37,7 @@ struct HomeView: View {
     // Existing hero metrics (used on iPhone flow only)
     private let heroLogoHeight: CGFloat = 120   // logo size (applies to both standard & neon)
     private let heroTopOffset: CGFloat = 0      // distance from button row
-    // NEW: cap the logo’s width so neon art can’t appear wider than standard
+    // Cap the logo’s width so neon art can’t appear wider than standard
     private let heroLogoMaxWidth: CGFloat = 420
 
     // MARK: - Init: move #Predicate here (reduces compiler load)
@@ -52,7 +53,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        // ✅ When Beta Glass *and* True Stack are ON (iOS 26+), show the Card Deck host.
+        // When Beta Glass *and* True Stack are ON (iOS 26+), show the Card Deck host.
         if #available(iOS 26.0, *), isBetaGlassEnabled && isTrueStackEnabled {
             TrueStackDeckHost(jobs: jobs)
                 .preferredColorScheme(isDarkMode ? .dark : .light)
@@ -124,8 +125,9 @@ struct HomeView: View {
                         .zIndex(1)
                 }
 
-                .background(Gradient(colors: [.blue, .purple]).opacity(0.1))
-
+                // Refactored background to a simple helper to reduce type-checking complexity
+                .background(phoneBackgroundView)
+                
                 // Sheets & alerts (unchanged)
                 .sheet(isPresented: $showJobHistory) {
                     JobHistorySheetView(
@@ -293,7 +295,8 @@ struct HomeView: View {
                     .zIndex(3)
             }
         }
-        .background(Gradient(colors: [.blue, .purple]).opacity(0.1))
+        // Refactored background to a simple helper to reduce type-checking complexity
+        .background(padBackgroundView)
     }
 
     // MARK: - Original iPhone list (reused)
@@ -450,6 +453,43 @@ struct HomeView: View {
         }
         try? modelContext.save()
     }
+
+    // MARK: - Background helpers (refactored)
+
+    /// A reusable subtle gradient for non-neon cases.
+    @ViewBuilder
+    private var fallbackSoftGradient: some View {
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [.blue, .purple],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .opacity(0.10)
+            .ignoresSafeArea()
+    }
+
+    /// iPhone background: neon when Midnight Neon is active, otherwise subtle gradient.
+    @ViewBuilder
+    private var phoneBackgroundView: some View {
+        if theme.currentID == .midnightNeon {
+            MidnightNeonDeckBackground()
+        } else {
+            fallbackSoftGradient
+        }
+    }
+
+    /// iPad background: neon when Midnight Neon is active, otherwise subtle gradient.
+    @ViewBuilder
+    private var padBackgroundView: some View {
+        if theme.currentID == .midnightNeon {
+            MidnightNeonDeckBackground()
+        } else {
+            fallbackSoftGradient
+        }
+    }
 }
 
 // MARK: - iPhone Empty State Bubble
@@ -491,17 +531,22 @@ private struct iPhoneEmptyState: View {
 
 @available(iOS 26.0, *)
 private struct TrueStackDeckHost: View {
+    @EnvironmentObject private var theme: ThemeManager
     let jobs: [Job]
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(
-                    LinearGradient(colors: [.blue, .purple],
-                                   startPoint: .topLeading,
-                                   endPoint: .bottomTrailing)
-                )
-                .opacity(0.08)
-                .ignoresSafeArea()
+            if theme.currentID == .midnightNeon {
+                MidnightNeonDeckBackground()
+            } else {
+                Rectangle()
+                    .fill(
+                        LinearGradient(colors: [.blue, .purple],
+                                       startPoint: .topLeading,
+                                       endPoint: .bottomTrailing)
+                    )
+                    .opacity(0.08)
+                    .ignoresSafeArea()
+            }
             TrueStackDeckView(jobs: jobs)
         }
     }
