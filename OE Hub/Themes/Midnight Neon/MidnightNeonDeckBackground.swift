@@ -55,7 +55,7 @@ struct MidnightNeonDeckBackground: View {
 
                 // Visibility knobs (boosted)
                 let gridOpacityDark  = isBetaGlassEnabled ? 0.11 : 0.095   // was ~0.045–0.065
-                let gridOpacityLight = isBetaGlassEnabled ? 0.095 : 0.075  // was ~0.065–0.085
+                let gridOpacityLight = isBetaGlassEnabled ? 0.11 : 0.090  // was ~0.095 : 0.075
                 let lineWidth: CGFloat = isDark ? 0.95 : 0.8               // thicker
 
                 let base = p.neonAccent.opacity(isDark ? gridOpacityDark : gridOpacityLight)

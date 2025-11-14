@@ -552,8 +552,8 @@ private struct ThemePreviewChip: View {
                 }
 
                 // Visibility knobs
-                let opacity = isDark ? 0.10 : 0.08      // was ~0.05 in dark
-                let width:   CGFloat = isDark ? 0.8 : 0.5 // was ~0.4 in dark
+                let opacity = isDark ? 0.10 : 0.11      // was 0.08 for light
+                let width:   CGFloat = isDark ? 0.8 : 0.7 // slightly thicker in light
 
                 // Primary stroke
                 ctx.stroke(path, with: .color(p.neonAccent.opacity(opacity)), lineWidth: width)
