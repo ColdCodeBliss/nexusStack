@@ -22,6 +22,9 @@ struct SettingsPanel: View {
     @State private var neonFlicker: Double = 1.0
     @State private var flickerArmed: Bool = false
     
+    @State private var previewTheme: AppThemeID? = nil
+
+    
 
     var body: some View {
         ZStack {
@@ -167,9 +170,11 @@ struct SettingsPanel: View {
             VStack(alignment: .leading, spacing: 12) {
                 // System (free)
                 HStack {
-                    Label("System (default)", systemImage: theme.currentID == .system ? "checkmark.circle.fill" : "circle")
+                    Label("nexusStack", systemImage: theme.currentID == .system ? "checkmark.circle.fill" : "circle")
                         .labelStyle(.titleAndIcon)
                     Spacer()
+                    Button("Preview") { previewTheme = .system }
+                        .buttonStyle(.bordered)
                     Button("Use") { theme.select(.system) }
                         .buttonStyle(.bordered)
                 }
@@ -179,9 +184,10 @@ struct SettingsPanel: View {
                 neonRow
 
                 // Tiny preview chip (non-invasive)
-                ThemePreviewRow(isNeon: true)
-                    .frame(height: 36)
-                    .opacity(0.9)
+                ThemePreviewChip(themeID: previewTheme ?? theme.currentID)
+                    .frame(height: 44)
+                    .animation(.easeInOut(duration: 0.2), value: previewTheme)
+
 
                 // DEBUG-ONLY: Activate without purchase for screenshots
                 #if DEBUG
@@ -236,6 +242,8 @@ struct SettingsPanel: View {
                     }
                 }
                 Spacer()
+                Button("Preview") { previewTheme = .midnightNeon }
+                    .buttonStyle(.bordered)
                 if themeStore.isMidnightNeonUnlocked {
                     Button("Use") { theme.select(.midnightNeon) }
                         .buttonStyle(.borderedProminent)
@@ -452,30 +460,120 @@ struct SettingsPanel: View {
     }
 }
 
-// Tiny preview chip used in the Themes section
-private struct ThemePreviewRow: View {
-    var isNeon: Bool
+
+private struct ThemePreviewChip: View {
+    let themeID: AppThemeID
+    @Environment(\.colorScheme) private var scheme
+    @EnvironmentObject private var theme: ThemeManager
+
     var body: some View {
+        let radius: CGFloat = 10
         ZStack {
-            if isNeon {
-                LinearGradient(
-                    colors: [
-                        Color(hex: "#0B1020") ?? .black,
-                        Color(hex: "#140F2A") ?? .black,
-                        Color(hex: "#0F1326") ?? .black
-                    ],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke((Color(hex: "#2CF3FF") ?? .cyan).opacity(0.35), lineWidth: 1)
-                        .shadow(color: (Color(hex: "#2CF3FF") ?? .cyan).opacity(0.20), radius: 8)
-                )
-            } else {
-                Color(.secondarySystemBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            switch themeID {
+            case .system:
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(Color(.secondarySystemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+
+            case .midnightNeon:
+                ZStack {
+                    // 1) Mini background & grid (light/dark aware)
+                    miniNeonBackground
+                        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+
+                    // 2) Neon “tube” border (scaled for chip)
+                    let p = theme.palette(scheme)
+                    let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+                    // Subtle but visible at small size
+                    shape.strokeBorder(p.neonAccent.opacity(0.28), lineWidth: 1)
+                    shape.stroke(p.neonAccent.opacity(0.65), lineWidth: 2)
+                        .blendMode(.plusLighter)
+                        .mask(shape.stroke(lineWidth: 2))
+
+                    shape.stroke(p.neonAccent.opacity(0.22), lineWidth: 8)
+                        .blur(radius: 7)
+                        .blendMode(.plusLighter)
+                        .mask(shape.stroke(lineWidth: 8))
+
+                    shape.stroke(p.neonAccent.opacity(0.14), lineWidth: 12)
+                        .blur(radius: 10)
+                        .blendMode(.plusLighter)
+                        .mask(shape.stroke(lineWidth: 12))
+                }
             }
         }
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                .padding(1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: radius))
+        .allowsHitTesting(false)
     }
+
+    // Miniature version of your MidnightNeonDeckBackground
+    @ViewBuilder
+    private var miniNeonBackground: some View {
+        let p = theme.palette(scheme)
+
+        // Gradient base (lighter set for light mode)
+        let bg = (scheme == .dark)
+        ? LinearGradient(colors: [
+            Color(hex: "#0B1020") ?? .black,
+            Color(hex: "#140F2A") ?? .black,
+            Color(hex: "#0F1326") ?? .black
+          ], startPoint: .topLeading, endPoint: .bottomTrailing)
+        : LinearGradient(colors: [
+            Color(hex: "#EAF2FF") ?? .white,
+            Color(hex: "#F6E9FF") ?? .white
+          ], startPoint: .topLeading, endPoint: .bottomTrailing)
+
+        ZStack {
+            bg
+
+            // Grid (stronger in dark mode)
+            Canvas { ctx, size in
+                let isDark = (scheme == .dark)
+
+                // Denser + slightly thicker in dark for visibility
+                let step: CGFloat = isDark ? 12 : 12
+                var path = Path()
+                for x in stride(from: 0, through: size.width, by: step) {
+                    path.move(to: .init(x: x, y: 0))
+                    path.addLine(to: .init(x: x, y: size.height))
+                }
+                for y in stride(from: 0, through: size.height, by: step) {
+                    path.move(to: .init(x: 0, y: y))
+                    path.addLine(to: .init(x: size.width, y: y))
+                }
+
+                // Visibility knobs
+                let opacity = isDark ? 0.10 : 0.08      // was ~0.05 in dark
+                let width:   CGFloat = isDark ? 0.8 : 0.5 // was ~0.4 in dark
+
+                // Primary stroke
+                ctx.stroke(path, with: .color(p.neonAccent.opacity(opacity)), lineWidth: width)
+
+                // Subtle halo pass in dark mode only (tiny blur = soft glow)
+                if isDark {
+                    ctx.addFilter(.blur(radius: 0.6))
+                    ctx.stroke(path, with: .color(p.neonAccent.opacity(0.08)), lineWidth: 1.2)
+                }
+            }
+            // Keep additive look so lines "light up" the chip
+            .blendMode(.plusLighter)
+
+            // Soft center bloom so it reads like a card
+            RadialGradient(
+                gradient: Gradient(colors: [p.glowColor.opacity(0.16), .clear]),
+                center: .center, startRadius: 6, endRadius: 140
+            )
+            .blendMode(.plusLighter)
+        }
+    }
+
 }
