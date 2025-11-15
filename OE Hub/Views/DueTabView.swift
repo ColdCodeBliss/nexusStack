@@ -329,7 +329,7 @@ struct DueTabView: View {
                         Image(systemName: "bell").padding(8)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(hasReminders ? Color.black : Color.white)
+                    .foregroundStyle(hasReminders ? Color.yellow : Color.white)
                     .accessibilityLabel("Set reminders")
                 }
                 .padding()

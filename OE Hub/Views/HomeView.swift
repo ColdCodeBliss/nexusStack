@@ -187,73 +187,76 @@ struct HomeView: View {
     // MARK: - iPad (NavigationSplitView with sidebar + detail)
 
     private var iPadSplitView: some View {
-        NavigationSplitView {
-            List(selection: $splitSelectionID) {
-                ForEach(jobs, id: \.persistentModelID) { (job: Job) in
-                    JobRowView(job: job)
-                        .contentShape(Rectangle())
-                        .tag(job.persistentModelID)
-                        .contextMenu {
-                            Button("Rename") { startRenaming(job) }
-                            Button("Change Color") {
-                                selectedJob = job
-                                showColorPicker = true
-                            }
-                            Button("Delete", role: .destructive) {
-                                softDelete(job)
-                            }
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button { startRenaming(job) } label: {
-                                Label("Rename", systemImage: "pencil")
-                            }
-                            .tint(.blue)
-                            Button {
-                                selectedJob = job
-                                showColorPicker = true
-                            } label: {
-                                Label("Change Color", systemImage: "paintbrush")
-                            }
-                            .tint(.green)
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) { softDelete(job) } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                }
-                .onDelete(perform: deleteJob)
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .toolbar { toolbarContent }
-            .navigationTitle(".nexusStack")
+        ZStack {
+            // Use the same theme-aware background helper as everywhere else
+            padBackgroundView
+                .ignoresSafeArea()
 
-            // Footer button (kept near sidebar bottom)
-            .safeAreaInset(edge: .bottom) {
-                if !deletedJobs.isEmpty {
-                    Button { showJobHistory = true } label: {
-                        HStack {
-                            Text("Stack History").font(.subheadline)
-                            Image(systemName: "chevron.right").font(.subheadline)
-                        }
-                        .foregroundStyle(.blue)
-                        .padding(.vertical, 8)
+            NavigationSplitView {
+                List(selection: $splitSelectionID) {
+                    ForEach(jobs, id: \.persistentModelID) { (job: Job) in
+                        JobRowView(job: job)
+                            .contentShape(Rectangle())
+                            .tag(job.persistentModelID)
+                            .contextMenu {
+                                Button("Rename") { startRenaming(job) }
+                                Button("Change Color") {
+                                    selectedJob = job
+                                    showColorPicker = true
+                                }
+                                Button("Delete", role: .destructive) {
+                                    softDelete(job)
+                                }
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button { startRenaming(job) } label: {
+                                    Label("Rename", systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                                Button {
+                                    selectedJob = job
+                                    showColorPicker = true
+                                } label: {
+                                    Label("Change Color", systemImage: "paintbrush")
+                                }
+                                .tint(.green)
+                            }
+                            .swipeActions {
+                                Button(role: .destructive) { softDelete(job) } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                     }
-                    .padding(.horizontal)
+                    .onDelete(perform: deleteJob)
                 }
-            }
-
-        } detail: {
-            if let id = splitSelectionID,
-               let job = jobs.first(where: { $0.persistentModelID == id }) {
-                JobDetailView(job: job)
-            } else {
-                ContentUnavailableView(
-                    "Select a Stack",
-                    systemImage: "folder",
-                    description: Text("Choose a stack from the sidebar to view its details.")
-                )
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)   // lets the neon grid/fallback show through
+                .toolbar { toolbarContent }
+                .navigationTitle(".nexusStack")
+                .safeAreaInset(edge: .bottom) {
+                    if !deletedJobs.isEmpty {
+                        Button { showJobHistory = true } label: {
+                            HStack {
+                                Text("Stack History").font(.subheadline)
+                                Image(systemName: "chevron.right").font(.subheadline)
+                            }
+                            .foregroundStyle(.blue)
+                            .padding(.vertical, 8)
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            } detail: {
+                if let id = splitSelectionID,
+                   let job = jobs.first(where: { $0.persistentModelID == id }) {
+                    JobDetailView(job: job)
+                } else {
+                    ContentUnavailableView(
+                        "Select a Stack",
+                        systemImage: "folder",
+                        description: Text("Choose a stack from the sidebar to view its details.")
+                    )
+                }
             }
         }
         // Shared sheets/alerts for iPad
@@ -299,9 +302,8 @@ struct HomeView: View {
                     .zIndex(3)
             }
         }
-        // Refactored background to a simple helper to reduce type-checking complexity
-        .background(padBackgroundView)
     }
+
 
     // MARK: - Original iPhone list (reused)
 
