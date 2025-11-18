@@ -1,3 +1,11 @@
+//
+//  WhatsNewManager.swift
+//  OE Hub
+//
+//  Created by Ryan Bliss on 11/18/25.
+//
+
+
 import SwiftUI
 
 // MARK: - Manager
