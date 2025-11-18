@@ -8,6 +8,7 @@ struct HomeView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var hSize
+    @EnvironmentObject private var theme: ThemeManager
 
     // UI State
     @State private var isRenaming = false
@@ -34,8 +35,10 @@ struct HomeView: View {
     @AppStorage("isTrueStackEnabled") private var isTrueStackEnabled = false
 
     // Existing hero metrics (used on iPhone flow only)
-    private let heroLogoHeight: CGFloat = 120   // logo size
+    private let heroLogoHeight: CGFloat = 120   // logo size (applies to both standard & neon)
     private let heroTopOffset: CGFloat = 0      // distance from button row
+    // Cap the logo’s width so neon art can’t appear wider than standard
+    private let heroLogoMaxWidth: CGFloat = 420
 
     // MARK: - Init: move #Predicate here (reduces compiler load)
     init() {
@@ -50,16 +53,19 @@ struct HomeView: View {
     }
 
     var body: some View {
-        // ✅ STEP 6: When Beta Glass *and* True Stack are ON (iOS 26+),
-        //            swap the home UI for the new Card Deck host.
+        // When Beta Glass *and* True Stack are ON (iOS 26+), show the Card Deck host.
         if #available(iOS 26.0, *), isBetaGlassEnabled && isTrueStackEnabled {
             TrueStackDeckHost(jobs: jobs)
                 .preferredColorScheme(isDarkMode ? .dark : .light)
         } else {
             // Branch by size class: regular = iPad (split), compact = iPhone (existing flow)
             if hSize == .regular {
-                iPadSplitView
-                    .preferredColorScheme(isDarkMode ? .dark : .light)
+                ZStack {
+                    padBackgroundView          // ← uses MidnightNeonDeckBackground for neon
+                        .ignoresSafeArea()
+                    iPadSplitView
+                }
+                .preferredColorScheme(isDarkMode ? .dark : .light)
             } else {
                 iPhoneStackView
                     .preferredColorScheme(isDarkMode ? .dark : .light)
@@ -80,8 +86,7 @@ struct HomeView: View {
             NavigationStack {
                 ZStack {
                     VStack {
-                        jobList               // same list as before
-                        jobHistoryButton
+                        jobList
                     }
                     // Push content down to sit under the overlayed logo
                     .padding(.top, max(0, heroLogoHeight + heroTopOffset + listGapBelowLogo + logoYOffset))
@@ -90,10 +95,15 @@ struct HomeView: View {
                     if jobs.isEmpty {
                         iPhoneEmptyState(glassOn: isBetaGlassEnabled)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .allowsHitTesting(false) // don't block taps to +
+                            .allowsHitTesting(false)
                             .transition(.opacity)
                     }
                 }
+                .overlay(alignment: .bottom) {
+                    stackHistoryOverlay(bottomInset: geo.safeAreaInsets.bottom)
+                        .ignoresSafeArea(edges: .bottom)   // let it hug the bottom edge
+                }
+
                 .navigationTitle("")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { toolbarContent }
@@ -108,7 +118,14 @@ struct HomeView: View {
 
                 // Overlay hero logo (iPhone only)
                 .overlay(alignment: .top) {
+                    // Wrap in a strict frame so both standard & neon assets render at identical size
                     HeroLogoRow(height: heroLogoHeight)
+                        .frame(
+                            maxWidth: heroLogoMaxWidth,
+                            minHeight: heroLogoHeight,
+                            maxHeight: heroLogoHeight,
+                            alignment: .center
+                        )
                         .padding(.top, heroTopOffset)
                         .padding(.horizontal, 16)
                         .offset(y: logoYOffset)
@@ -116,8 +133,9 @@ struct HomeView: View {
                         .zIndex(1)
                 }
 
-                .background(Gradient(colors: [.blue, .purple]).opacity(0.1))
-
+                // Refactored background to a simple helper to reduce type-checking complexity
+                .background(phoneBackgroundView)
+                
                 // Sheets & alerts (unchanged)
                 .sheet(isPresented: $showJobHistory) {
                     JobHistorySheetView(
@@ -173,75 +191,76 @@ struct HomeView: View {
     // MARK: - iPad (NavigationSplitView with sidebar + detail)
 
     private var iPadSplitView: some View {
-        NavigationSplitView {
-            List(selection: $splitSelectionID) {
-                ForEach(jobs, id: \.persistentModelID) { (job: Job) in
-                    JobRowView(job: job)
-                        .contentShape(Rectangle())
-                        .tag(job.persistentModelID)
-                        .contextMenu {
-                            Button("Rename") { startRenaming(job) }
-                            Button("Change Color") {
-                                selectedJob = job
-                                showColorPicker = true
-                            }
-                            Button("Delete", role: .destructive) {
-                                softDelete(job)
-                            }
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button { startRenaming(job) } label: {
-                                Label("Rename", systemImage: "pencil")
-                            }
-                            .tint(.blue)
-                            Button {
-                                selectedJob = job
-                                showColorPicker = true
-                            } label: {
-                                Label("Change Color", systemImage: "paintbrush")
-                            }
-                            .tint(.green)
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) { softDelete(job) } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                }
-                .onDelete(perform: deleteJob)
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .toolbar { toolbarContent }
-            .navigationTitle(".nexusStack")
+        ZStack {
+            // Use the same theme-aware background helper as everywhere else
+            padBackgroundView
+                .ignoresSafeArea()
 
-            // Footer button (kept near sidebar bottom)
-            .safeAreaInset(edge: .bottom) {
-                if !deletedJobs.isEmpty {
-                    Button { showJobHistory = true } label: {
-                        HStack {
-                            Text("Stack History").font(.subheadline)
-                            Image(systemName: "chevron.right").font(.subheadline)
-                        }
-                        .foregroundStyle(.blue)
-                        .padding(.vertical, 8)
+            NavigationSplitView {
+                List(selection: $splitSelectionID) {
+                    ForEach(jobs, id: \.persistentModelID) { (job: Job) in
+                        JobRowView(job: job)
+                            .contentShape(Rectangle())
+                            .tag(job.persistentModelID)
+                            .contextMenu {
+                                Button("Rename") { startRenaming(job) }
+                                Button("Change Color") {
+                                    selectedJob = job
+                                    showColorPicker = true
+                                }
+                                Button("Delete", role: .destructive) {
+                                    softDelete(job)
+                                }
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button { startRenaming(job) } label: {
+                                    Label("Rename", systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                                Button {
+                                    selectedJob = job
+                                    showColorPicker = true
+                                } label: {
+                                    Label("Change Color", systemImage: "paintbrush")
+                                }
+                                .tint(.green)
+                            }
+                            .swipeActions {
+                                Button(role: .destructive) { softDelete(job) } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                     }
-                    .padding(.horizontal)
+                    .onDelete(perform: deleteJob)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)     // table background transparent
+                .listRowBackground(Color.clear)       // row backgrounds transparent
+                .listRowSeparator(.hidden)            // optional: match iPhone look
+                .toolbar { toolbarContent }
+                .navigationTitle(".nexusStack")
+                .safeAreaInset(edge: .bottom) {
+                    if !deletedJobs.isEmpty {
+                        Button { showJobHistory = true } label: {
+                            HStack {
+                                Text("Stack History").font(.subheadline)
+                                Image(systemName: "chevron.right").font(.subheadline)
+                            }
+                            .foregroundStyle(.blue)
+                            .padding(.vertical, 8)
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            } detail: {
+                if let id = splitSelectionID,
+                   let job = jobs.first(where: { $0.persistentModelID == id }) {
+                    JobDetailView(job: job)
+                } else {
+                    iPadEmptyDetailState   // ← new custom empty view
                 }
             }
 
-        } detail: {
-            if let id = splitSelectionID,
-               let job = jobs.first(where: { $0.persistentModelID == id }) {
-                JobDetailView(job: job)
-            } else {
-                // Empty state on iPad before selection
-                ContentUnavailableView(
-                    "Select a Stack",
-                    systemImage: "folder",
-                    description: Text("Choose a stack from the sidebar to view its details.")
-                )
-            }
         }
         // Shared sheets/alerts for iPad
         .sheet(isPresented: $showJobHistory) {
@@ -274,22 +293,20 @@ struct HomeView: View {
                     .zIndex(2)
             }
         }
-        // Help as sheet when Beta OFF
         .sheet(isPresented: Binding(
             get: { showHelp && !isBetaGlassEnabled },
             set: { if !$0 { showHelp = false } }
         )) {
             HelpView()
         }
-        // Help as floating glass panel when Beta ON
         .overlay {
             if showHelp && isBetaGlassEnabled {
                 HelpPanel(isPresented: $showHelp)
                     .zIndex(3)
             }
         }
-        .background(Gradient(colors: [.blue, .purple]).opacity(0.1))
     }
+
 
     // MARK: - Original iPhone list (reused)
 
@@ -340,6 +357,39 @@ struct HomeView: View {
             .padding(.bottom, 8)
         }
     }
+    
+    // MARK: - iPad Empty Detail State
+
+    @ViewBuilder
+    private var iPadEmptyDetailState: some View {
+        ZStack {
+            padBackgroundView
+
+            VStack(spacing: 16) {
+                // Use the same hero logo row so standard vs neon logo is automatic
+                HeroLogoRow(height: heroLogoHeight)
+                    .frame(
+                        maxWidth: heroLogoMaxWidth,
+                        minHeight: heroLogoHeight,
+                        maxHeight: heroLogoHeight,
+                        alignment: .center
+                    )
+                    .padding(.bottom, 4)
+
+                Text("Select a Stack")
+                    .font(.title2.weight(.semibold))
+                    .multilineTextAlignment(.center)
+
+                Text("Choose a stack from the sidebar to view its details.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
 
     // MARK: - Toolbar
 
@@ -349,7 +399,6 @@ struct HomeView: View {
             Menu {
                 Button("Settings") { showSettings = true }
                 Button("Help") { showHelp = true }
-               // Button("Option 2") { /* future */ }
             } label: {
                 Label("Menu", systemImage: "line.horizontal.3")
             }
@@ -397,6 +446,30 @@ struct HomeView: View {
             }
         }
     }
+    
+    @ViewBuilder
+    private func stackHistoryOverlay(bottomInset: CGFloat) -> some View {
+        if !deletedJobs.isEmpty {
+            Button { showJobHistory = true } label: {
+                HStack(spacing: 8) {
+                    Text("Stack History").font(.subheadline)
+                    Image(systemName: "chevron.right").font(.subheadline)
+                }
+                .foregroundStyle(.blue)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .opacity(0.9)
+                )
+            }
+            .padding(.horizontal, 16)
+            // Sit just above the very bottom; tweak the "bump" if you want it even lower.
+            .padding(.bottom, bottomInset > 0 ? max(0, bottomInset - 50) : 1)
+        }
+    }
+
 
     // MARK: - Bindings
 
@@ -446,6 +519,43 @@ struct HomeView: View {
         }
         try? modelContext.save()
     }
+
+    // MARK: - Background helpers (refactored)
+
+    /// A reusable subtle gradient for non-neon cases.
+    @ViewBuilder
+    private var fallbackSoftGradient: some View {
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [.blue, .purple],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .opacity(0.10)
+            .ignoresSafeArea()
+    }
+
+    /// iPhone background: neon when Midnight Neon is active, otherwise subtle gradient.
+    @ViewBuilder
+    private var phoneBackgroundView: some View {
+        if theme.currentID == .midnightNeon {
+            MidnightNeonDeckBackground()
+        } else {
+            fallbackSoftGradient
+        }
+    }
+
+    /// iPad background: neon when Midnight Neon is active, otherwise subtle gradient.
+    @ViewBuilder
+    private var padBackgroundView: some View {
+        if theme.currentID == .midnightNeon {
+            MidnightNeonDeckBackground()
+        } else {
+            fallbackSoftGradient
+        }
+    }
 }
 
 // MARK: - iPhone Empty State Bubble
@@ -484,23 +594,26 @@ private struct iPhoneEmptyState: View {
 }
 
 // MARK: - True Stack Deck Host (Beta-only gate)
-// This tiny wrapper keeps HomeView.body clean and gives a subtle background.
-// Requires you to add the new TrueStackDeckView in your project.
+
 @available(iOS 26.0, *)
 private struct TrueStackDeckHost: View {
+    @EnvironmentObject private var theme: ThemeManager
     let jobs: [Job]
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(
-                    LinearGradient(colors: [.blue, .purple],
-                                   startPoint: .topLeading,
-                                   endPoint: .bottomTrailing)
-                )
-                .opacity(0.08)
-                .ignoresSafeArea()
+            if theme.currentID == .midnightNeon {
+                MidnightNeonDeckBackground()
+            } else {
+                Rectangle()
+                    .fill(
+                        LinearGradient(colors: [.blue, .purple],
+                                       startPoint: .topLeading,
+                                       endPoint: .bottomTrailing)
+                    )
+                    .opacity(0.08)
+                    .ignoresSafeArea()
+            }
             TrueStackDeckView(jobs: jobs)
         }
     }
 }
-

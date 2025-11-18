@@ -20,7 +20,14 @@ struct NoteEditorPanel: View {
     // Show trash only when editing an existing note
     var onDelete: (() -> Void)? = nil
 
+    // Appearance
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
+    @EnvironmentObject private var theme: ThemeManager
+    @Environment(\.colorScheme) private var colorScheme
+
+    // 🌙 Midnight Neon — shared flicker for panel + editor card
+    @State private var neonFlicker: Double = 1.0
+    @State private var flickerArmed: Bool = false
 
     // MARK: - Bullet config
     private let bulletPrefix = "•\t"     // bullet + tab for nice alignment
@@ -72,7 +79,7 @@ struct NoteEditorPanel: View {
                             colorMenu
                         }
 
-                        // Editor
+                        // Editor (text-entry section)
                         RichTextEditorKit(
                             attributedText: $attributedText,
                             selectedRange: $selectedRange,
@@ -82,7 +89,13 @@ struct NoteEditorPanel: View {
                         .frame(minHeight: 200)
                         .padding(8)
                         .background(innerCardBackground(corner: 12))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        )
+                        // 🌙 Midnight Neon on the editor card only
+                        .overlay(neonOverlayCard(radius: 12))
                     }
                     .padding(16)
                 }
@@ -122,11 +135,17 @@ struct NoteEditorPanel: View {
             }
             .frame(maxWidth: 520)
             .background(panelBackground) // glass bubble
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.10), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(.white.opacity(0.10), lineWidth: 1))
+            // 🌙 Midnight Neon on the outer panel
+            .overlay(neonOverlayPanel(radius: 20))
             .shadow(color: .black.opacity(0.35), radius: 28, y: 10)
             .padding(.horizontal, 16)
             .transition(.scale.combined(with: .opacity))
+            // Flicker lifecycle
+            .onAppear { armFlickerIfNeeded() }
+            .onDisappear { flickerArmed = false }
+            .onChange(of: theme.currentID) { _, _ in armFlickerIfNeeded() }
         }
     }
 
@@ -176,7 +195,7 @@ struct NoteEditorPanel: View {
             ForEach(0..<colors.count, id: \.self) { idx in
                 Button { colorIndex = idx } label: {
                     HStack {
-                        Circle().fill(colors[idx]).frame(width: 14, height: 14)
+                        Circle().fill(colors[safeIndex(colorIndex)]).frame(width: 14, height: 14)
                         Text(colorName(for: idx))
                     }
                 }
@@ -373,6 +392,103 @@ struct NoteEditorPanel: View {
     private func safeIndex(_ idx: Int) -> Int {
         return ((idx % colors.count) + colors.count) % colors.count
     }
+
+    // MARK: - Neon overlays (panel + editor card)
+
+    private func neonOverlayPanel(radius: CGFloat) -> some View {
+        guard theme.currentID == .midnightNeon else { return AnyView(EmptyView()) }
+        let p = theme.palette(colorScheme)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+        // Slightly softer than small cards (bigger surface area)
+        let borderAlpha: Double    = isBetaGlassEnabled ? 0.22 : 0.28
+        let tubeAlpha: Double      = isBetaGlassEnabled ? 0.48 : 0.58
+        let innerGlowAlpha: Double = isBetaGlassEnabled ? 0.18 : 0.24
+        let bloomAlpha: Double     = isBetaGlassEnabled ? 0.12 : 0.18
+
+        let overlay = ZStack {
+            shape.strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+            shape.stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 2))
+            shape.stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 10)
+                .blur(radius: 12)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 12))
+            shape.stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 18)
+                .blur(radius: 18)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 18))
+        }
+        .allowsHitTesting(false)
+
+        return AnyView(overlay)
+    }
+
+    private func neonOverlayCard(radius: CGFloat) -> some View {
+        guard theme.currentID == .midnightNeon else { return AnyView(EmptyView()) }
+        let p = theme.palette(colorScheme)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+        let borderAlpha: Double    = isBetaGlassEnabled ? 0.24 : 0.32
+        let tubeAlpha: Double      = isBetaGlassEnabled ? 0.55 : 0.65
+        let innerGlowAlpha: Double = isBetaGlassEnabled ? 0.22 : 0.28
+        let bloomAlpha: Double     = isBetaGlassEnabled ? 0.14 : 0.20
+
+        let overlay = ZStack {
+            shape.strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+            shape.stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 2))
+            shape.stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 8)
+                .blur(radius: 9)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 10))
+            shape.stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 14)
+                .blur(radius: 16)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 16))
+        }
+        .allowsHitTesting(false)
+
+        return AnyView(overlay)
+    }
+
+    // MARK: - Flicker scheduler
+
+    private func armFlickerIfNeeded() {
+        guard theme.currentID == .midnightNeon else {
+            flickerArmed = false
+            neonFlicker = 1.0
+            return
+        }
+        guard !flickerArmed else { return }
+        flickerArmed = true
+        scheduleNextFlicker()
+    }
+
+    private func scheduleNextFlicker() {
+        guard flickerArmed else { return }
+        let delay = Double.random(in: 6.0...14.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard flickerArmed else { return }
+            withAnimation(.easeInOut(duration: 0.10)) { neonFlicker = 0.78 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.easeInOut(duration: 0.16)) { neonFlicker = 1.0 }
+                if Bool.random() {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                        withAnimation(.easeInOut(duration: 0.08)) { neonFlicker = 0.88 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.easeInOut(duration: 0.12)) { neonFlicker = 1.0 }
+                            scheduleNextFlicker()
+                        }
+                    }
+                } else {
+                    scheduleNextFlicker()
+                }
+            }
+        }
+    }
 }
 
 // MARK: - UITextView-backed rich editor with bullet continuation
@@ -449,8 +565,7 @@ struct RichTextEditorKit: UIViewRepresentable {
             let m = NSMutableAttributedString(attributedString: att)
 
             // Grab current typing attributes (font/color)
-            // In RichTextEditorKit.Coordinator -> shouldChangeTextIn:
-            let typingAttrs = textView.typingAttributes   // was: var typingAttrs = ...
+            let typingAttrs = textView.typingAttributes
             let baseFont = (typingAttrs[.font] as? UIFont) ?? UIFont.preferredFont(forTextStyle: .body)
             let baseColor = (typingAttrs[.foregroundColor] as? UIColor) ?? .label
 
@@ -475,9 +590,7 @@ struct RichTextEditorKit: UIViewRepresentable {
 
             if contentAfterPrefix.isEmpty {
                 // END LIST: Remove the bullet-only paragraph and insert a normal newline
-                // 1) Delete entire paragraph (which currently contains only a bullet)
                 m.replaceCharacters(in: paraRange, with: NSAttributedString(string: ""))
-                // 2) Insert a plain newline at the original paragraph start
                 let insertLoc = paraRange.location
                 let nl = NSAttributedString(string: "\n", attributes: [
                     .font: baseFont,

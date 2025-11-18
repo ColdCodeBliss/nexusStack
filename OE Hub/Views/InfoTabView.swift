@@ -29,55 +29,61 @@ struct InfoTabView: View {
     private let cardRadius: CGFloat = 18
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Job Information")
-                .font(.title2)
-                .bold()
-                .padding(.top)
+        ZStack {
+            // Midnight Neon grid behind the Info panel
+            NeonPanelGridLayer(cornerRadius: 20, density: .panel)
+                .ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if !email.isEmpty {
-                        Text("Email: \(email)")
+            VStack(spacing: 16) {
+                Text("Job Information")
+                    .font(.title2)
+                    .bold()
+                    .padding(.top)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if !email.isEmpty {
+                            Text("Email: \(email)")
+                        }
+                        if payRate > 0 {
+                            Text("Pay Rate: \(payRate, format: .currency(code: "USD")) \(payType)")
+                        }
+                        if !managerName.isEmpty {
+                            Text("Manager: \(managerName)")
+                        }
+                        if !roleTitle.isEmpty {
+                            Text("Role/Title: \(roleTitle)")
+                        }
+                        if !equipmentList.isEmpty {
+                            Text("Equipment/Assets: \(equipmentList)")
+                        }
+                        Text("Job Type: \(jobType)")
+                        if jobType == "Contracted", let endDate = contractEndDate {
+                            Text("Contract Ends: \(endDate, format: .dateTime.month(.twoDigits).day(.twoDigits).year(.defaultDigits))")
+                        }
+                        Button("Edit") {
+                            loadJobInfo()
+                            showEditForm = true
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(.blue.opacity(0.8))
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
-                    if payRate > 0 {
-                        Text("Pay Rate: \(payRate, format: .currency(code: "USD")) \(payType)")
-                    }
-                    if !managerName.isEmpty {
-                        Text("Manager: \(managerName)")
-                    }
-                    if !roleTitle.isEmpty {
-                        Text("Role/Title: \(roleTitle)")
-                    }
-                    if !equipmentList.isEmpty {
-                        Text("Equipment/Assets: \(equipmentList)")
-                    }
-                    Text("Job Type: \(jobType)")
-                    if jobType == "Contracted", let endDate = contractEndDate {
-                        Text("Contract Ends: \(endDate, format: .dateTime.month(.twoDigits).day(.twoDigits).year(.defaultDigits))")
-                    }
-                    Button("Edit") {
-                        loadJobInfo()
-                        showEditForm = true
-                    }
-                    .frame(maxWidth: .infinity)
                     .padding()
-                    .background(.blue.opacity(0.8))
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(cardBackground(tint: color(for: job.colorCode)))
+                    .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                            .stroke(isBetaGlassEnabled ? Color.white.opacity(0.10) : Color.white.opacity(0.20), lineWidth: 1)
+                    )
+                    .shadow(color: isBetaGlassEnabled ? .black.opacity(0.25) : .black.opacity(0.15),
+                            radius: isBetaGlassEnabled ? 14 : 5,
+                            x: 0, y: isBetaGlassEnabled ? 8 : 0)
+                    .padding(.horizontal)
                 }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(cardBackground(tint: color(for: job.colorCode)))
-                .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                        .stroke(isBetaGlassEnabled ? Color.white.opacity(0.10) : Color.white.opacity(0.20), lineWidth: 1)
-                )
-                .shadow(color: isBetaGlassEnabled ? .black.opacity(0.25) : .black.opacity(0.15),
-                        radius: isBetaGlassEnabled ? 14 : 5,
-                        x: 0, y: isBetaGlassEnabled ? 8 : 0)
-                .padding(.horizontal)
             }
         }
         .onAppear { loadJobInfo() }

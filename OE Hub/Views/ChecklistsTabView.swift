@@ -7,6 +7,8 @@ struct ChecklistsTabView: View {
     var job: Job
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var theme: ThemeManager
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
 
     @State private var isCompletedSectionExpanded: Bool = false
@@ -22,17 +24,33 @@ struct ChecklistsTabView: View {
     private var activeItems: [ChecklistItem]   { job.checklistItems.filter { !$0.isCompleted } }
     private var completedItems: [ChecklistItem]{ job.checklistItems.filter {  $0.isCompleted } }
 
-    var body: some View {
-        VStack(spacing: 16) {
-            // Inline add form (shown via header + button OR toolbar trigger)
-            if showAddChecklistForm {
-                checklistForm
-                    .padding(.top, formTopInset) // ← bump down to avoid clipping
-            }
+    // Shared flicker for all rows in this screen (Midnight Neon only)
+    @State private var neonFlicker: Double = 1.0
+    @State private var flickerArmed: Bool = false
 
-            checklistsList
+    var body: some View {
+        ZStack {
+            // Midnight Neon grid behind the whole Checklist panel
+            NeonPanelGridLayer(cornerRadius: 20, density: .panel)
+                .ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                // Inline add form (shown via header + button OR toolbar trigger)
+                if showAddChecklistForm {
+                    checklistForm
+                        .padding(.top, formTopInset) // ← bump down to avoid clipping
+                }
+
+                checklistsList
+            }
         }
-        .onAppear { showAddChecklistForm = false }
+        .onAppear {
+            showAddChecklistForm = false
+            armFlickerIfNeeded()
+        }
+        .onDisappear { flickerArmed = false }
+        .onChange(of: theme.currentID) { _, _ in armFlickerIfNeeded() }
+
         .sheet(isPresented: $showColorPicker) {
             ColorPickerView(
                 selectedItem: Binding(
@@ -55,6 +73,7 @@ struct ChecklistsTabView: View {
             withAnimation { showAddChecklistForm = true }
         }
     }
+
 
     // MARK: - Add Form
 
@@ -96,7 +115,7 @@ struct ChecklistsTabView: View {
             .padding(.horizontal)
         }
         .padding()
-        .background(.ultraThinMaterial)
+        .background(checklistRowBackgroundStyle)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
     }
@@ -114,7 +133,7 @@ struct ChecklistsTabView: View {
                             .font(.headline)
 
                         Spacer()
-
+    
                         Button {
                             newChecklistItem = ""
                             withAnimation { showAddChecklistForm = true }
@@ -142,6 +161,7 @@ struct ChecklistsTabView: View {
                     .padding(.vertical, 2)
             ) {
                 ForEach(activeItems) { item in
+                    let radius: CGFloat = 12
                     HStack {
                         Circle()
                             .fill(priorityColor(for: item.priorityLevel))
@@ -149,10 +169,21 @@ struct ChecklistsTabView: View {
 
                         Text(item.title)
                             .foregroundStyle(.primary)
+                        Spacer()
                     }
                     .padding()
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .background(checklistRowBackgroundStyle)
+                    .clipShape(RoundedRectangle(cornerRadius: radius))
+
+                    // Hairline stroke (original)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: radius)
+                            .stroke(Color.white.opacity(0.20), lineWidth: 1)
+                    )
+
+                    // Midnight Neon tube + inner glows (no shadows, fully contained)
+                    .overlay(neonOverlayRow(radius: radius, completed: false))
+
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         Button {
                             item.isCompleted = true
@@ -184,7 +215,7 @@ struct ChecklistsTabView: View {
                 }
             }
 
-            // Completed (collapsible)
+            // Completed (collapsible) — now with a softer neon look
             Section(
                 header:
                     HStack {
@@ -199,6 +230,7 @@ struct ChecklistsTabView: View {
             ) {
                 if isCompletedSectionExpanded {
                     ForEach(completedItems) { item in
+                        let radius: CGFloat = 12
                         HStack {
                             Circle()
                                 .fill(priorityColor(for: item.priorityLevel))
@@ -214,27 +246,14 @@ struct ChecklistsTabView: View {
                         }
                         .padding()
                         .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button {
-                                item.isCompleted = false
-                                item.completionDate = nil
-                                try? modelContext.save()
-                            } label: {
-                                Label("Unmark", systemImage: "arrow.uturn.left")
-                            }
-                            .tint(.orange)
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                if let index = job.checklistItems.firstIndex(of: item) {
-                                    job.checklistItems.remove(at: index)
-                                    try? modelContext.save()
-                                }
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
+                        .clipShape(RoundedRectangle(cornerRadius: radius))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: radius)
+                                .stroke(Color.white.opacity(0.20), lineWidth: 1)
+                        )
+
+                        // NEW: Softer neon treatment for completed items
+                        .overlay(neonOverlayRow(radius: radius, completed: true))
                     }
 
                     if !completedItems.isEmpty {
@@ -270,5 +289,132 @@ struct ChecklistsTabView: View {
             modelContext.delete(item)
         }
         try? modelContext.save()
+    }
+
+    // MARK: - Neon overlay (tube + glows, masked to row rect)
+    // `completed: true` slightly reduces intensity to avoid competing with active items.
+    private func neonOverlayRow(radius: CGFloat, completed: Bool) -> some View {
+        // Early exit: if theme isn't Neon, return an empty view with a concrete type.
+        guard theme.currentID == .midnightNeon else { return AnyView(EmptyView()) }
+
+        // Compute locals OUTSIDE of the builder to avoid inference issues.
+        let p = theme.palette(colorScheme)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+        // Base alphas
+        var borderAlpha    = isBetaGlassEnabled ? 0.24 : 0.32
+        var tubeAlpha      = isBetaGlassEnabled ? 0.55 : 0.65
+        var innerGlowAlpha = isBetaGlassEnabled ? 0.22 : 0.28
+        var bloomAlpha     = isBetaGlassEnabled ? 0.14 : 0.20
+
+        // Completed rows get a softer treatment
+        if completed {
+            borderAlpha    *= 0.85
+            tubeAlpha      *= 0.75
+            innerGlowAlpha *= 0.75
+            bloomAlpha     *= 0.70
+        }
+        
+        // 🔆 BOOST FOR LIGHT MODE:
+        // Over white, we need more punch so the tube isn't lost.
+        if colorScheme == .light {
+            borderAlpha    *= 4.5
+            tubeAlpha      *= 1.5
+            innerGlowAlpha *= 1.6
+            bloomAlpha     *= 1.7
+        }
+
+        // Build the overlay as a single concrete type and erase to AnyView.
+        let overlay = ZStack {
+            // 1) crisp inset border
+            shape
+                .strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+
+            // 2) tube core (thin bright line)
+            shape
+                .stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 2))
+
+            // 3) tight inner glow
+            shape
+                .stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 8)
+                .blur(radius: 9)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 10))
+
+            // 4) inner bloom
+            shape
+                .stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 14)
+                .blur(radius: 16)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 16))
+        }
+
+        return AnyView(overlay)
+    }
+
+
+    // MARK: - Flicker
+
+    private func armFlickerIfNeeded() {
+        guard theme.currentID == .midnightNeon else {
+            flickerArmed = false
+            neonFlicker = 1.0
+            return
+        }
+        guard !flickerArmed else { return }
+        flickerArmed = true
+        scheduleNextFlicker()
+    }
+
+    private func scheduleNextFlicker() {
+        guard flickerArmed else { return }
+        let delay = Double.random(in: 6.0...14.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard flickerArmed else { return }
+            withAnimation(.easeInOut(duration: 0.10)) { neonFlicker = 0.78 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.easeInOut(duration: 0.16)) { neonFlicker = 1.0 }
+                if Bool.random() {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                        withAnimation(.easeInOut(duration: 0.08)) { neonFlicker = 0.88 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.easeInOut(duration: 0.12)) { neonFlicker = 1.0 }
+                            scheduleNextFlicker()
+                        }
+                    }
+                } else {
+                    scheduleNextFlicker()
+                }
+            }
+        }
+    }
+    
+    // MARK: - Row background style (Midnight Neon aware)
+    private var checklistRowBackgroundStyle: AnyShapeStyle {
+        if theme.currentID == .midnightNeon {
+            let isDark = (colorScheme == .dark)
+
+            // Match the MidnightNeonDeckBackground gradient tones:
+            // Dark: roughly the deep navy from the gradient
+            // Light: the soft lilac / pinkish tone from the light gradient.
+            let baseColor: Color = {
+                if isDark {
+                    // From MidnightNeonDeckBackground.dark gradient
+                    return Color(hex: "#0F1326") ?? .black
+                } else {
+                    // From MidnightNeonDeckBackground.light gradient
+                    return Color(hex: "#f6e9ff") ?? .white
+                }
+            }()
+
+            // Slight opacity tweak so the tube + glow still read nicely
+            let shaded = baseColor.opacity(isDark ? 0.92 : 0.88)
+            return AnyShapeStyle(shaded)
+        } else {
+            // Original behavior for non-neon themes
+            return AnyShapeStyle(.ultraThinMaterial)
+        }
     }
 }

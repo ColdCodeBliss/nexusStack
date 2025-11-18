@@ -1,0 +1,100 @@
+# -----------------------------
+# macOS cruft
+# -----------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# -----------------------------
+# Xcode & build artifacts
+# -----------------------------
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+*.xcworkspace/contents.xcworkspacedata
+
+# If using previews, ignore device logs cache (optional)
+*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+# -----------------------------
+# Swift Package Manager
+# -----------------------------
+.swiftpm/xcode/xcuserdata/
+# Keep Package.resolved for reproducible builds (recommended)
+# !Package.resolved
+
+# -----------------------------
+# CocoaPods (if used)
+# -----------------------------
+Pods/
+# Podfile.lock  # (usually commit this; uncomment to ignore)
+
+# -----------------------------
+# Carthage (if used)
+# -----------------------------
+Carthage/Build/
+Carthage/Checkouts/
+
+# -----------------------------
+# Fastlane (if used)
+# -----------------------------
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# -----------------------------
+# Secrets / Provisioning / Signing
+# -----------------------------
+*.p12
+*.cer
+*.mobileprovision
+
+# App Store Connect API private keys
+AuthKey_*.p8
+
+# -----------------------------
+# Config & env (treat as secrets in public repos)
+# -----------------------------
+.env
+.env.*
+Secrets.xcconfig
+# If you keep public, non-secret settings in xcconfig, commit those and only ignore secret ones.
+
+# -----------------------------
+# StoreKit testing configs
+# -----------------------------
+# If your .storekit files include test accounts/identifiers you consider private, ignore them:
+# *.storekit
+
+# -----------------------------
+# Firebase / Analytics (optional)
+# -----------------------------
+# If public repo, consider excluding these to avoid leaking project info:
+GoogleService-Info.plist
+# firebase_app_id_file.json
+
+# -----------------------------
+# App assets caches (optional)
+# -----------------------------
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# -----------------------------
+# Swift Playgrounds (optional)
+# -----------------------------
+timeline.xctimeline
+playground.xcworkspace
+
+# -----------------------------
+# General logs
+# -----------------------------
+*.log

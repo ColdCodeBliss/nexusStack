@@ -4,6 +4,8 @@ import UIKit
 
 struct MindMapTabView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var theme: ThemeManager          // ⬅️ THEME
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("isBetaGlassEnabled")   private var isBetaGlassEnabled   = false
 
     var job: Job
@@ -55,6 +57,10 @@ struct MindMapTabView: View {
     // ✅ Share state: present sheet only when we have a URL
     private struct ShareItem: Identifiable { let id = UUID(); let url: URL }
     @State private var shareItem: ShareItem? = nil
+
+    // 🌙 Midnight Neon — shared flicker for all node bubbles in this screen
+    @State private var neonFlicker: Double = 1.0
+    @State private var flickerArmed: Bool = false
 
     var body: some View {
         GeometryReader { geo in
@@ -192,6 +198,11 @@ struct MindMapTabView: View {
             ActivityView(activityItems: [item.url])
                 .ignoresSafeArea()
         }
+
+        // Neon flicker lifecycle
+        .onAppear { armFlickerIfNeeded() }
+        .onDisappear { flickerArmed = false }
+        .onChange(of: theme.currentID) { _, _ in armFlickerIfNeeded() }
     }
 
     // MARK: - Live map (interactive)
@@ -199,16 +210,24 @@ struct MindMapTabView: View {
         ZStack {
             // edges
             Canvas { ctx, _ in
+                let neonOn = (theme.currentID == .midnightNeon)
+                let accent = theme.palette(colorScheme).neonAccent
+
                 for node in job.mindNodes {
                     guard let parent = node.parent else { continue }
                     let p1 = CGPoint(x: parent.x, y: parent.y)
                     let p2 = CGPoint(x: node.x,   y: node.y)
-                    var path = Path()
-                    let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
-                    path.move(to: p1)
-                    path.addQuadCurve(to: p2, control: mid)
-                    let stroke = StrokeStyle(lineWidth: 2, lineCap: .round)
-                    ctx.stroke(path, with: .color(.primary.opacity(0.25)), style: stroke)
+
+                    if neonOn {
+                        strokeEdgeNeon(&ctx, from: p1, to: p2, accent: accent, neonFlicker: neonFlicker)
+                    } else {
+                        var path = Path()
+                        let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
+                        path.move(to: p1)
+                        path.addQuadCurve(to: p2, control: mid)
+                        let stroke = StrokeStyle(lineWidth: 2, lineCap: .round)
+                        ctx.stroke(path, with: .color(.primary.opacity(0.25)), style: stroke)
+                    }
                 }
             }
 
@@ -221,13 +240,17 @@ struct MindMapTabView: View {
 
             // nodes
             ForEach(job.mindNodes) { node in
-                NodeBubble(node: node,
-                           isSelected: node.id == selected?.id,
-                           glassOn: isBetaGlassEnabled,
-                           focused: $focusedNodeID)
-                    .position(x: node.x, y: node.y)
-                    .highPriorityGesture(nodeDragGesture(for: node))
-                    .onTapGesture { selected = node }
+                NodeBubble(
+                    node: node,
+                    isSelected: node.id == selected?.id,
+                    glassOn: isBetaGlassEnabled,
+                    focused: $focusedNodeID,
+                    neonFlicker: neonFlicker                  // ⬅️ pass flicker
+                )
+                .environmentObject(theme)                      // ⬅️ pass theme
+                .position(x: node.x, y: node.y)
+                .highPriorityGesture(nodeDragGesture(for: node))
+                .onTapGesture { selected = node }
             }
         }
         .background(Color.clear)
@@ -238,22 +261,37 @@ struct MindMapTabView: View {
     private var snapshotContent: some View {
         ZStack {
             Canvas { ctx, _ in
+                let neonOn = (theme.currentID == .midnightNeon)
+                let accent = theme.palette(colorScheme).neonAccent
+
                 for node in job.mindNodes {
                     guard let parent = node.parent else { continue }
                     let p1 = CGPoint(x: parent.x, y: parent.y)
                     let p2 = CGPoint(x: node.x,   y: node.y)
-                    var path = Path()
-                    let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
-                    path.move(to: p1)
-                    path.addQuadCurve(to: p2, control: mid)
-                    let stroke = StrokeStyle(lineWidth: 2, lineCap: .round)
-                    ctx.stroke(path, with: .color(.primary.opacity(0.25)), style: stroke)
+
+                    if neonOn {
+                        // Use a slightly lower base opacity for export so lines don’t overpower nodes
+                        strokeEdgeNeon(&ctx, from: p1, to: p2, accent: accent, baseOpacity: 0.22, neonFlicker: neonFlicker)
+                    } else {
+                        var path = Path()
+                        let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
+                        path.move(to: p1)
+                        path.addQuadCurve(to: p2, control: mid)
+                        let stroke = StrokeStyle(lineWidth: 2, lineCap: .round)
+                        ctx.stroke(path, with: .color(.primary.opacity(0.25)), style: stroke)
+                    }
                 }
             }
 
+
             ForEach(job.mindNodes) { node in
-                NodeBubbleSnapshot(node: node, glassOn: isBetaGlassEnabled)
-                    .position(x: node.x, y: node.y)
+                NodeBubbleSnapshot(
+                    node: node,
+                    glassOn: isBetaGlassEnabled,
+                    neonFlicker: neonFlicker                   // ⬅️ match export
+                )
+                .environmentObject(theme)
+                .position(x: node.x, y: node.y)
             }
         }
         .frame(width: canvasSize, height: canvasSize)
@@ -531,9 +569,45 @@ struct MindMapTabView: View {
             return nil
         }
     }
+
+    // MARK: - Flicker
+
+    private func armFlickerIfNeeded() {
+        guard theme.currentID == .midnightNeon else {
+            flickerArmed = false
+            neonFlicker = 1.0
+            return
+        }
+        guard !flickerArmed else { return }
+        flickerArmed = true
+        scheduleNextFlicker()
+    }
+
+    private func scheduleNextFlicker() {
+        guard flickerArmed else { return }
+        let delay = Double.random(in: 6.0...14.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard flickerArmed else { return }
+            withAnimation(.easeInOut(duration: 0.10)) { neonFlicker = 0.78 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.easeInOut(duration: 0.16)) { neonFlicker = 1.0 }
+                if Bool.random() {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                        withAnimation(.easeInOut(duration: 0.08)) { neonFlicker = 0.88 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.easeInOut(duration: 0.12)) { neonFlicker = 1.0 }
+                            scheduleNextFlicker()
+                        }
+                    }
+                } else {
+                    scheduleNextFlicker()
+                }
+            }
+        }
+    }
 }
 
-// === AutoArrangeConfirmPanel, NodeBubble, NodeBubbleSnapshot, ActivityView remain mostly unchanged ===
+// === AutoArrangeConfirmPanel, NodeBubble, NodeBubbleSnapshot, ActivityView remain, but NodeBubble/Snapshot gain Neon overlay ===
 
 private extension MindMapTabView {
     func autoArrangeTree() {
@@ -684,13 +758,15 @@ private struct AutoArrangeConfirmPanel: View {
     }
 }
 
-// MARK: - Live node bubble (editable)
+// MARK: - Live node bubble (editable) + Neon
 private struct NodeBubble: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var theme: ThemeManager
     var node: MindNode
     var isSelected: Bool
     var glassOn: Bool
     var focused: FocusState<UUID?>.Binding
+    var neonFlicker: Double                              // ⬅️ from parent
 
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
 
@@ -703,6 +779,7 @@ private struct NodeBubble: View {
 
     var body: some View {
         let tint = color(for: node.colorCode ?? "teal")
+        let neonOn = theme.currentID == .midnightNeon
 
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
@@ -736,8 +813,12 @@ private struct NodeBubble: View {
                                       (glassOn ? Color.white.opacity(0.10) : Color.white.opacity(0.20)),
                         lineWidth: isSelected ? 2 : 1)
         )
-        .shadow(color: glassOn ? .black.opacity(0.25) : .black.opacity(0.15),
-                radius: glassOn ? 12 : 5, x: 0, y: glassOn ? 7 : 0)
+        // 🌙 Midnight Neon tube+glow over the bubble
+        .overlay(neonOverlayNode(radius: radius, neonFlicker: neonFlicker))
+        // Suppress legacy shadow when Neon is active (avoids plumes)
+        .shadow(color: neonOn ? .clear : (glassOn ? .black.opacity(0.25) : .black.opacity(0.15)),
+                radius: neonOn ? 0 : (glassOn ? 12 : 5),
+                x: 0, y: neonOn ? 0 : (glassOn ? 7 : 0))
     }
 
     @ViewBuilder
@@ -767,12 +848,46 @@ private struct NodeBubble: View {
             set: { node[keyPath: keyPath] = $0; try? modelContext.save() }
         )
     }
+
+    // Concrete overlay to avoid generic inference issues
+    private func neonOverlayNode(radius: CGFloat, neonFlicker: Double) -> some View {
+        guard theme.currentID == .midnightNeon else { return AnyView(EmptyView()) }
+
+        let p = theme.palette(Environment(\.colorScheme).wrappedValue)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+        let borderAlpha    = isBetaGlassEnabled ? 0.24 : 0.32
+        let tubeAlpha      = isBetaGlassEnabled ? 0.55 : 0.65
+        let innerGlowAlpha = isBetaGlassEnabled ? 0.22 : 0.28
+        let bloomAlpha     = isBetaGlassEnabled ? 0.14 : 0.20
+
+        let overlay = ZStack {
+            shape.strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+
+            shape.stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 2))
+
+            shape.stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 8)
+                .blur(radius: 9)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 10))
+
+            shape.stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 14)
+                .blur(radius: 16)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 16))
+        }
+        return AnyView(overlay)
+    }
 }
 
-// MARK: - Snapshot node bubble (read-only label)
+// MARK: - Snapshot node bubble (read-only label) + Neon
 private struct NodeBubbleSnapshot: View {
+    @EnvironmentObject private var theme: ThemeManager
     var node: MindNode
     var glassOn: Bool
+    var neonFlicker: Double
 
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
 
@@ -785,6 +900,7 @@ private struct NodeBubbleSnapshot: View {
 
     var body: some View {
         let tint = color(for: node.colorCode ?? "teal")
+        let neonOn = theme.currentID == .midnightNeon
 
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
@@ -813,8 +929,10 @@ private struct NodeBubbleSnapshot: View {
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .stroke(glassOn ? Color.white.opacity(0.10) : Color.white.opacity(0.20), lineWidth: 1)
         )
-        .shadow(color: glassOn ? .black.opacity(0.25) : .black.opacity(0.15),
-                radius: glassOn ? 12 : 5, x: 0, y: glassOn ? 7 : 0)
+        .overlay(neonOverlayNode(radius: radius, neonFlicker: neonFlicker))
+        .shadow(color: neonOn ? .clear : (glassOn ? .black.opacity(0.25) : .black.opacity(0.15)),
+                radius: neonOn ? 0 : (glassOn ? 12 : 5),
+                x: 0, y: neonOn ? 0 : (glassOn ? 7 : 0))
     }
 
     @ViewBuilder
@@ -836,7 +954,84 @@ private struct NodeBubbleSnapshot: View {
                 .fill(tint.gradient)
         }
     }
+
+    private func neonOverlayNode(radius: CGFloat, neonFlicker: Double) -> some View {
+        guard theme.currentID == .midnightNeon else { return AnyView(EmptyView()) }
+
+        let p = theme.palette(Environment(\.colorScheme).wrappedValue)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+
+        let borderAlpha    = isBetaGlassEnabled ? 0.24 : 0.32
+        let tubeAlpha      = isBetaGlassEnabled ? 0.55 : 0.65
+        let innerGlowAlpha = isBetaGlassEnabled ? 0.22 : 0.28
+        let bloomAlpha     = isBetaGlassEnabled ? 0.14 : 0.20
+
+        let overlay = ZStack {
+            shape.strokeBorder(p.neonAccent.opacity(borderAlpha * neonFlicker), lineWidth: 1)
+
+            shape.stroke(p.neonAccent.opacity(tubeAlpha * neonFlicker), lineWidth: 2)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 2))
+
+            shape.stroke(p.neonAccent.opacity(innerGlowAlpha * neonFlicker), lineWidth: 8)
+                .blur(radius: 9)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 10))
+
+            shape.stroke(p.neonAccent.opacity(bloomAlpha * neonFlicker), lineWidth: 14)
+                .blur(radius: 16)
+                .blendMode(.plusLighter)
+                .mask(shape.stroke(lineWidth: 16))
+        }
+        return AnyView(overlay)
+    }
 }
+
+// MARK: - Neon edge stroker (used by live & snapshot canvases)
+private func strokeEdgeNeon(
+    _ ctx: inout GraphicsContext,
+    from p1: CGPoint,
+    to p2: CGPoint,
+    accent: Color,
+    baseOpacity: Double = 0.28,
+    neonFlicker: Double
+) {
+    // Shared path + base stroke
+    var path = Path()
+    let mid = CGPoint(x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2)
+    path.move(to: p1)
+    path.addQuadCurve(to: p2, control: mid)
+
+    let baseStyle = StrokeStyle(lineWidth: 2, lineCap: .round)
+    ctx.stroke(path, with: .color(.primary.opacity(baseOpacity)), style: baseStyle)
+
+    // Neon layers (contained in a layer so filters don't leak)
+    ctx.drawLayer { layer in
+        // Core
+        layer.stroke(path,
+                     with: .color(accent.opacity(0.70 * neonFlicker)),
+                     style: StrokeStyle(lineWidth: 2, lineCap: .round))
+
+        // Tight glow
+        layer.addFilter(.shadow(color: accent.opacity(0.55 * neonFlicker), radius: 6, x: 0, y: 0))
+        layer.stroke(path,
+                     with: .color(accent.opacity(0.38 * neonFlicker)),
+                     style: StrokeStyle(lineWidth: 4, lineCap: .round))
+
+        // Mid bloom
+        layer.addFilter(.shadow(color: accent.opacity(0.35 * neonFlicker), radius: 12, x: 0, y: 0))
+        layer.stroke(path,
+                     with: .color(accent.opacity(0.22 * neonFlicker)),
+                     style: StrokeStyle(lineWidth: 8, lineCap: .round))
+
+        // Wide mist
+        layer.addFilter(.shadow(color: accent.opacity(0.20 * neonFlicker), radius: 18, x: 0, y: 0))
+        layer.stroke(path,
+                     with: .color(accent.opacity(0.12 * neonFlicker)),
+                     style: StrokeStyle(lineWidth: 12, lineCap: .round))
+    }
+}
+
 
 // MARK: - Share sheet wrapper
 private struct ActivityView: UIViewControllerRepresentable {
