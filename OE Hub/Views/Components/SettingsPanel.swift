@@ -21,10 +21,16 @@ struct SettingsPanel: View {
     // 🌙 Midnight Neon flicker (shared across panel + cards)
     @State private var neonFlicker: Double = 1.0
     @State private var flickerArmed: Bool = false
-    
+
+    // Theme preview chip state
     @State private var previewTheme: AppThemeID? = nil
 
+    // New: Theme info popup flag
+    @State private var showThemeInfo = false
     
+    // New: which preview image (if any) is expanded full-screen
+    @State private var expandedPreviewName: String? = nil
+
 
     var body: some View {
         ZStack {
@@ -62,6 +68,7 @@ struct SettingsPanel: View {
             await themeStore.load()
         }
         .overlay(alignment: .bottom) { bottomToast }
+        .overlay { themeInfoOverlay }                 // ← Theme info popup
         .onAppear { armFlickerIfNeeded() }
         .onDisappear { flickerArmed = false }
         .onChange(of: theme.currentID) { _, _ in armFlickerIfNeeded() }
@@ -163,9 +170,26 @@ struct SettingsPanel: View {
 
     private var themesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Themes")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
+            // Header + info button
+            HStack(spacing: 6) {
+                Text("Themes")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+                        showThemeInfo = true
+                    }
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("About Midnight Neon theme")
+
+                Spacer()
+            }
 
             VStack(alignment: .leading, spacing: 12) {
                 // System (free)
@@ -187,7 +211,6 @@ struct SettingsPanel: View {
                 ThemePreviewChip(themeID: previewTheme ?? theme.currentID)
                     .frame(height: 44)
                     .animation(.easeInOut(duration: 0.2), value: previewTheme)
-
 
                 // DEBUG-ONLY: Activate without purchase for screenshots
                 #if DEBUG
@@ -458,8 +481,165 @@ struct SettingsPanel: View {
             }
         }
     }
+
+    // MARK: - Theme info overlay
+
+    @ViewBuilder
+    private var themeInfoOverlay: some View {
+        if showThemeInfo {
+            ZStack {
+                Color.black.opacity(0.45)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showThemeInfo = false
+                        }
+                    }
+
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Midnight Neon theme")
+                            .font(.headline)
+                            .foregroundStyle(
+                                Color(hex: "#FF3CCF") ?? .pink   // MAGENTA title
+                            )
+                        Spacer()
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showThemeInfo = false
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Text("Midnight Neon adds glowing tube borders, subtle animated flicker, and a retro grid backdrop to your stacks, panels, and job detail views.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.cyan)          // CYAN body
+                        .multilineTextAlignment(.leading)
+
+                    previewThumb("MidnightNeonPreview")
+                    previewThumb("MidnightNeonPreview2")
+                    previewThumb("MNP2")
+
+
+                    Text("You can always switch back to the default theme at any time from this panel.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.cyan)          // CYAN footer
+                        .multilineTextAlignment(.leading)
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showThemeInfo = false
+                        }
+                    } label: {
+                        Text("Done")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .padding(.vertical, 8)
+                    .background(Color.blue.opacity(0.85))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.top, 4)
+                }
+                .padding(16)
+                .frame(maxWidth: 420)
+                .background(
+                    Color(.systemBackground)
+                        .opacity(0.94)          // LESS see-through than glass
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.45), radius: 28, y: 10)
+                .padding()
+                
+                // NEW: full-screen expanded image on top of popup
+                    if let name = expandedPreviewName {
+                        fullScreenPreview(name)
+                    }
+            }
+            .transition(.scale.combined(with: .opacity))
+        }
+    }
+    // MARK: - Preview image helpers
+
+    @ViewBuilder
+    private func previewThumb(_ name: String) -> some View {
+        Image(name)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(maxHeight: 260)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .onTapGesture {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+                    expandedPreviewName = name
+                }
+            }
+    }
+
+    // Full-screen zoomed preview overlay
+    @ViewBuilder
+    private func fullScreenPreview(_ name: String) -> some View {
+        ZStack {
+            Color.black.opacity(0.85)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        expandedPreviewName = nil
+                    }
+                }
+
+            VStack {
+                Spacer(minLength: 0)
+
+                Image(name)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 800)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.6), radius: 30, y: 10)
+                    .padding()
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        expandedPreviewName = nil
+                    }
+                } label: {
+                    Label("Close", systemImage: "xmark.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.blue.opacity(0.9))
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                }
+                .padding(.bottom, 24)
+
+                Spacer(minLength: 0)
+            }
+        }
+        .transition(.opacity.combined(with: .scale))
+    }
 }
 
+
+// MARK: - Theme preview chip
 
 private struct ThemePreviewChip: View {
     let themeID: AppThemeID
@@ -468,6 +648,7 @@ private struct ThemePreviewChip: View {
 
     var body: some View {
         let radius: CGFloat = 10
+
         ZStack {
             switch themeID {
             case .system:
@@ -487,22 +668,36 @@ private struct ThemePreviewChip: View {
                     // 2) Neon “tube” border (scaled for chip)
                     let p = theme.palette(scheme)
                     let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    let isDark = (scheme == .dark)
 
-                    // Subtle but visible at small size
-                    shape.strokeBorder(p.neonAccent.opacity(0.28), lineWidth: 1)
-                    shape.stroke(p.neonAccent.opacity(0.65), lineWidth: 2)
+                    let borderAlpha: Double = 0.32
+                    let tubeAlpha:   Double = 0.95
+                    let innerAlpha:  Double = isDark ? 0.26 : 0.30
+                    let bloomAlpha:  Double = isDark ? 0.18 : 0.22
+
+                    let tubeWidth:  CGFloat = 2.4
+                    let innerWidth: CGFloat = 8.0
+                    let bloomWidth: CGFloat = 13.0
+
+                    // 0) Hairline inset border
+                    shape.strokeBorder(p.neonAccent.opacity(borderAlpha), lineWidth: 1.1)
+
+                    // 1) Bright tube core
+                    shape.stroke(p.neonAccent.opacity(tubeAlpha), lineWidth: tubeWidth)
                         .blendMode(.plusLighter)
-                        .mask(shape.stroke(lineWidth: 2))
+                        .mask(shape.stroke(lineWidth: tubeWidth))
 
-                    shape.stroke(p.neonAccent.opacity(0.22), lineWidth: 8)
+                    // 2) Tight inner glow
+                    shape.stroke(p.neonAccent.opacity(innerAlpha), lineWidth: innerWidth)
                         .blur(radius: 7)
                         .blendMode(.plusLighter)
-                        .mask(shape.stroke(lineWidth: 8))
+                        .mask(shape.stroke(lineWidth: innerWidth))
 
-                    shape.stroke(p.neonAccent.opacity(0.14), lineWidth: 12)
+                    // 3) Outer bloom
+                    shape.stroke(p.neonAccent.opacity(bloomAlpha), lineWidth: bloomWidth)
                         .blur(radius: 10)
                         .blendMode(.plusLighter)
-                        .mask(shape.stroke(lineWidth: 12))
+                        .mask(shape.stroke(lineWidth: bloomWidth))
                 }
             }
         }
@@ -519,29 +714,35 @@ private struct ThemePreviewChip: View {
     @ViewBuilder
     private var miniNeonBackground: some View {
         let p = theme.palette(scheme)
+        let isDark = (scheme == .dark)
 
-        // Gradient base (lighter set for light mode)
-        let bg = (scheme == .dark)
-        ? LinearGradient(colors: [
-            Color(hex: "#0B1020") ?? .black,
-            Color(hex: "#140F2A") ?? .black,
-            Color(hex: "#0F1326") ?? .black
-          ], startPoint: .topLeading, endPoint: .bottomTrailing)
-        : LinearGradient(colors: [
-            Color(hex: "#EAF2FF") ?? .white,
-            Color(hex: "#F6E9FF") ?? .white
-          ], startPoint: .topLeading, endPoint: .bottomTrailing)
+        // Gradient base (lighter in light mode)
+        let bg = isDark
+        ? LinearGradient(
+            colors: [
+                Color(hex: "#0B1020") ?? .black,
+                Color(hex: "#140F2A") ?? .black,
+                Color(hex: "#0F1326") ?? .black
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        : LinearGradient(
+            colors: [
+                Color(hex: "#FFE9FF") ?? .white,
+                Color(hex: "#FFF4FF") ?? .white
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
 
         ZStack {
             bg
 
-            // Grid (stronger in dark mode)
             Canvas { ctx, size in
-                let isDark = (scheme == .dark)
-
-                // Denser + slightly thicker in dark for visibility
-                let step: CGFloat = isDark ? 12 : 12
+                let step: CGFloat = 12
                 var path = Path()
+
                 for x in stride(from: 0, through: size.width, by: step) {
                     path.move(to: .init(x: x, y: 0))
                     path.addLine(to: .init(x: x, y: size.height))
@@ -551,29 +752,37 @@ private struct ThemePreviewChip: View {
                     path.addLine(to: .init(x: size.width, y: y))
                 }
 
-                // Visibility knobs
-                let opacity = isDark ? 0.10 : 0.11      // was 0.08 for light
-                let width:   CGFloat = isDark ? 0.8 : 0.7 // slightly thicker in light
+                let baseColor: Color = isDark
+                    ? p.neonAccent
+                    : (Color(hex: "#FF3CCF") ?? p.neonAccent)
 
-                // Primary stroke
-                ctx.stroke(path, with: .color(p.neonAccent.opacity(opacity)), lineWidth: width)
+                let opacity: CGFloat = isDark ? 0.16 : 0.70
+                let width:   CGFloat = isDark ? 0.9  : 1.3
 
-                // Subtle halo pass in dark mode only (tiny blur = soft glow)
-                if isDark {
-                    ctx.addFilter(.blur(radius: 0.6))
-                    ctx.stroke(path, with: .color(p.neonAccent.opacity(0.08)), lineWidth: 1.2)
-                }
+                ctx.stroke(path,
+                           with: .color(baseColor.opacity(opacity)),
+                           lineWidth: width)
+
+                ctx.addFilter(.blur(radius: isDark ? 0.6 : 0.9))
+                ctx.stroke(
+                    path,
+                    with: .color(baseColor.opacity(isDark ? 0.10 : 0.30)),
+                    lineWidth: isDark ? 1.2 : 1.5
+                )
             }
-            // Keep additive look so lines "light up" the chip
-            .blendMode(.plusLighter)
+            .blendMode(isDark ? .plusLighter : .normal)
 
-            // Soft center bloom so it reads like a card
+            let bloomColor: Color = isDark
+                ? p.glowColor
+                : (Color(hex: "#FF3CCF") ?? p.glowColor)
+
             RadialGradient(
-                gradient: Gradient(colors: [p.glowColor.opacity(0.16), .clear]),
-                center: .center, startRadius: 6, endRadius: 140
+                gradient: Gradient(colors: [bloomColor.opacity(0.24), .clear]),
+                center: .center,
+                startRadius: 6,
+                endRadius: 140
             )
             .blendMode(.plusLighter)
         }
     }
-
 }

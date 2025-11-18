@@ -55,47 +55,53 @@ struct NotesTabView: View {
     @State private var flickerArmed: Bool = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header row: "Notes" + glassy "+"
-            HStack(spacing: 8) {
-                Text("Notes")
-                    .font(.headline)
+        ZStack {
+            // Midnight Neon grid behind the whole Notes panel
+            NeonPanelGridLayer(cornerRadius: 20, density: .panel)
+                .ignoresSafeArea()
 
-                Spacer()
+            VStack(spacing: 0) {
+                // Header row: "Notes" + glassy "+"
+                HStack(spacing: 8) {
+                    Text("Notes")
+                        .font(.headline)
 
-                Button {
-                    // Opens the same compose flow you already use
-                    prepareNewNote()
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.headline.weight(.semibold))
-                        .frame(width: 32, height: 32)
-                        .background(
-                            Group {
-                                if #available(iOS 26.0, *), isBetaGlassEnabled {
-                                    Color.clear.glassEffect(.regular, in: .circle)
-                                } else {
-                                    Circle().fill(.ultraThinMaterial)
+                    Spacer()
+
+                    Button {
+                        // Opens the same compose flow you already use
+                        prepareNewNote()
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.headline.weight(.semibold))
+                            .frame(width: 32, height: 32)
+                            .background(
+                                Group {
+                                    if #available(iOS 26.0, *), isBetaGlassEnabled {
+                                        Color.clear.glassEffect(.regular, in: .circle)
+                                    } else {
+                                        Circle().fill(.ultraThinMaterial)
+                                    }
                                 }
-                            }
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                        )
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+                    .accessibilityLabel("Add Note")
                 }
-                .buttonStyle(.plain)
-                .contentShape(Circle())
-                .accessibilityLabel("Add Note")
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
 
-            // Grid of notes
-            ScrollView {
-                makeGrid(notes: sortedNotes)
-                    .padding()
+                // Grid of notes
+                ScrollView {
+                    makeGrid(notes: sortedNotes)
+                        .padding()
+                }
             }
         }
         // Keep your existing editors exactly as-is
@@ -109,6 +115,7 @@ struct NotesTabView: View {
         .onDisappear { flickerArmed = false }
         .onChange(of: theme.currentID) { _, _ in armFlickerIfNeeded() }
     }
+
 
     // MARK: - Builders
 

@@ -60,8 +60,12 @@ struct HomeView: View {
         } else {
             // Branch by size class: regular = iPad (split), compact = iPhone (existing flow)
             if hSize == .regular {
-                iPadSplitView
-                    .preferredColorScheme(isDarkMode ? .dark : .light)
+                ZStack {
+                    padBackgroundView          // ← uses MidnightNeonDeckBackground for neon
+                        .ignoresSafeArea()
+                    iPadSplitView
+                }
+                .preferredColorScheme(isDarkMode ? .dark : .light)
             } else {
                 iPhoneStackView
                     .preferredColorScheme(isDarkMode ? .dark : .light)
@@ -230,7 +234,9 @@ struct HomeView: View {
                     .onDelete(perform: deleteJob)
                 }
                 .listStyle(.plain)
-                .scrollContentBackground(.hidden)   // lets the neon grid/fallback show through
+                .scrollContentBackground(.hidden)     // table background transparent
+                .listRowBackground(Color.clear)       // row backgrounds transparent
+                .listRowSeparator(.hidden)            // optional: match iPhone look
                 .toolbar { toolbarContent }
                 .navigationTitle(".nexusStack")
                 .safeAreaInset(edge: .bottom) {
@@ -251,13 +257,10 @@ struct HomeView: View {
                    let job = jobs.first(where: { $0.persistentModelID == id }) {
                     JobDetailView(job: job)
                 } else {
-                    ContentUnavailableView(
-                        "Select a Stack",
-                        systemImage: "folder",
-                        description: Text("Choose a stack from the sidebar to view its details.")
-                    )
+                    iPadEmptyDetailState   // ← new custom empty view
                 }
             }
+
         }
         // Shared sheets/alerts for iPad
         .sheet(isPresented: $showJobHistory) {
@@ -354,6 +357,39 @@ struct HomeView: View {
             .padding(.bottom, 8)
         }
     }
+    
+    // MARK: - iPad Empty Detail State
+
+    @ViewBuilder
+    private var iPadEmptyDetailState: some View {
+        ZStack {
+            padBackgroundView
+
+            VStack(spacing: 16) {
+                // Use the same hero logo row so standard vs neon logo is automatic
+                HeroLogoRow(height: heroLogoHeight)
+                    .frame(
+                        maxWidth: heroLogoMaxWidth,
+                        minHeight: heroLogoHeight,
+                        maxHeight: heroLogoHeight,
+                        alignment: .center
+                    )
+                    .padding(.bottom, 4)
+
+                Text("Select a Stack")
+                    .font(.title2.weight(.semibold))
+                    .multilineTextAlignment(.center)
+
+                Text("Choose a stack from the sidebar to view its details.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
 
     // MARK: - Toolbar
 

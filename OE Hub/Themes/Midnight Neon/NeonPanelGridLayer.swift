@@ -1,3 +1,10 @@
+//
+//  NeonPanelGridLayer.swift
+//  OE Hub
+//
+//  Created by Ryan Bliss on 11/16/25.
+//
+
 import SwiftUI
 
 /// Reusable neon grid for card/panel-style surfaces when Midnight Neon is active.
@@ -33,12 +40,13 @@ struct NeonPanelGridLayer: View {
                         switch density {
                         case .panel:
                             step = isDark ? 28 : 26
-                            baseOpacity = isDark ? 0.11 : 0.12
-                            lineWidth = isDark ? 0.85 : 0.8
+                            // ⬆️ Boost light-mode visibility (more “pink”, less gray)
+                            baseOpacity = isDark ? 0.11 : 0.22
+                            lineWidth = isDark ? 0.85 : 1.05
                         case .compactChip:
                             step = isDark ? 14 : 12
-                            baseOpacity = isDark ? 0.10 : 0.11
-                            lineWidth = isDark ? 0.75 : 0.7
+                            baseOpacity = isDark ? 0.10 : 0.18
+                            lineWidth = isDark ? 0.75 : 0.95
                         }
 
                         var path = Path()
@@ -52,19 +60,30 @@ struct NeonPanelGridLayer: View {
                         }
 
                         let p = theme.palette(colorScheme)
+                        let baseColor = p.neonAccent
+
+                        // Core grid stroke
                         ctx.stroke(
                             path,
-                            with: .color(p.neonAccent.opacity(baseOpacity)),
+                            with: .color(baseColor.opacity(baseOpacity)),
                             lineWidth: lineWidth
                         )
 
-                        // Subtle halo in dark mode for extra punch
                         if isDark {
+                            // Subtle halo in dark mode for extra punch
                             ctx.addFilter(.blur(radius: 0.8))
                             ctx.stroke(
                                 path,
-                                with: .color(p.neonAccent.opacity(0.08)),
+                                with: .color(baseColor.opacity(0.08)),
                                 lineWidth: lineWidth + 0.4
+                            )
+                        } else {
+                            // NEW: light-mode halo to keep lines feeling neon/pink, not gray
+                            ctx.addFilter(.blur(radius: 0.7))
+                            ctx.stroke(
+                                path,
+                                with: .color(baseColor.opacity(0.16)),
+                                lineWidth: lineWidth + 0.3
                             )
                         }
                     }

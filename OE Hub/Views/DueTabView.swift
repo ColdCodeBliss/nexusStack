@@ -50,6 +50,9 @@ struct DueTabView: View {
 
     var body: some View {
         ZStack {
+            //add NeonPanelGridLayer(cornerRadius: 20, density: .panel) .ignoresSafeArea()  - for affecting deliverables panel
+            NeonPanelGridLayer(cornerRadius: 20, density: .panel)
+                .ignoresSafeArea()
             VStack(spacing: 16) {
                 if showAddDeliverableForm {
                     deliverableForm
@@ -449,7 +452,8 @@ struct DueTabView: View {
         deliverableToRename = deliverable
         renameText = deliverable.taskDescription
     }
-
+    
+    //affects the deliverables job/stack bubbles
     @ViewBuilder
     private func rowBackground(tint: Color, radius: CGFloat) -> some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
@@ -656,6 +660,7 @@ private struct CompletedDeliverablesPanel: View {
         .transition(.opacity.combined(with: .scale))
     }
 
+    //affects completed deliverables panel
     @ViewBuilder private var panelBackground: some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             ZStack {
@@ -678,6 +683,7 @@ private struct CompletedDeliverablesPanel: View {
         } else { Circle().fill(.ultraThinMaterial) }
     }
 
+    //affects completed deliverables, completed job/stack bubbles
     @ViewBuilder private func rowBackgroundPanel(tint: Color, radius: CGFloat) -> some View {
         if #available(iOS 26.0, *), isBetaGlassEnabled {
             ZStack {

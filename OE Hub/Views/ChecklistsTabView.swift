@@ -29,14 +29,20 @@ struct ChecklistsTabView: View {
     @State private var flickerArmed: Bool = false
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Inline add form (shown via header + button OR toolbar trigger)
-            if showAddChecklistForm {
-                checklistForm
-                    .padding(.top, formTopInset) // ← bump down to avoid clipping
-            }
+        ZStack {
+            // Midnight Neon grid behind the whole Checklist panel
+            NeonPanelGridLayer(cornerRadius: 20, density: .panel)
+                .ignoresSafeArea()
 
-            checklistsList
+            VStack(spacing: 16) {
+                // Inline add form (shown via header + button OR toolbar trigger)
+                if showAddChecklistForm {
+                    checklistForm
+                        .padding(.top, formTopInset) // ← bump down to avoid clipping
+                }
+
+                checklistsList
+            }
         }
         .onAppear {
             showAddChecklistForm = false
@@ -67,6 +73,7 @@ struct ChecklistsTabView: View {
             withAnimation { showAddChecklistForm = true }
         }
     }
+
 
     // MARK: - Add Form
 
@@ -108,7 +115,7 @@ struct ChecklistsTabView: View {
             .padding(.horizontal)
         }
         .padding()
-        .background(.ultraThinMaterial)
+        .background(checklistRowBackgroundStyle)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
     }
@@ -126,7 +133,7 @@ struct ChecklistsTabView: View {
                             .font(.headline)
 
                         Spacer()
-
+    
                         Button {
                             newChecklistItem = ""
                             withAnimation { showAddChecklistForm = true }
@@ -165,7 +172,7 @@ struct ChecklistsTabView: View {
                         Spacer()
                     }
                     .padding()
-                    .background(.ultraThinMaterial)
+                    .background(checklistRowBackgroundStyle)
                     .clipShape(RoundedRectangle(cornerRadius: radius))
 
                     // Hairline stroke (original)
@@ -307,6 +314,15 @@ struct ChecklistsTabView: View {
             innerGlowAlpha *= 0.75
             bloomAlpha     *= 0.70
         }
+        
+        // 🔆 BOOST FOR LIGHT MODE:
+        // Over white, we need more punch so the tube isn't lost.
+        if colorScheme == .light {
+            borderAlpha    *= 4.5
+            tubeAlpha      *= 1.5
+            innerGlowAlpha *= 1.6
+            bloomAlpha     *= 1.7
+        }
 
         // Build the overlay as a single concrete type and erase to AnyView.
         let overlay = ZStack {
@@ -372,6 +388,33 @@ struct ChecklistsTabView: View {
                     scheduleNextFlicker()
                 }
             }
+        }
+    }
+    
+    // MARK: - Row background style (Midnight Neon aware)
+    private var checklistRowBackgroundStyle: AnyShapeStyle {
+        if theme.currentID == .midnightNeon {
+            let isDark = (colorScheme == .dark)
+
+            // Match the MidnightNeonDeckBackground gradient tones:
+            // Dark: roughly the deep navy from the gradient
+            // Light: the soft lilac / pinkish tone from the light gradient.
+            let baseColor: Color = {
+                if isDark {
+                    // From MidnightNeonDeckBackground.dark gradient
+                    return Color(hex: "#0F1326") ?? .black
+                } else {
+                    // From MidnightNeonDeckBackground.light gradient
+                    return Color(hex: "#f6e9ff") ?? .white
+                }
+            }()
+
+            // Slight opacity tweak so the tube + glow still read nicely
+            let shaded = baseColor.opacity(isDark ? 0.92 : 0.88)
+            return AnyShapeStyle(shaded)
+        } else {
+            // Original behavior for non-neon themes
+            return AnyShapeStyle(.ultraThinMaterial)
         }
     }
 }
