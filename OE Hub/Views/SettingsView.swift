@@ -32,9 +32,9 @@ struct SettingsView: View {
                         Toggle("Dark Mode", isOn: $isDarkMode)
 
                         if #available(iOS 26.0, *) {
-                            Toggle("Liquid Glass (Beta, iOS 26+)", isOn: $isBetaGlassEnabled)
+                            Toggle("Liquid Glass (iOS 26+)", isOn: $isBetaGlassEnabled)
                         } else {
-                            Toggle("Liquid Glass (Beta, iOS 26+)", isOn: .constant(false))
+                            Toggle("Liquid Glass (iOS 26+)", isOn: .constant(false))
                                 .disabled(true)
                                 .foregroundStyle(.secondary)
                         }

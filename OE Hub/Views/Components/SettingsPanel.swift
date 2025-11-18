@@ -125,9 +125,9 @@ struct SettingsPanel: View {
                 Toggle("Dark Mode", isOn: $isDarkMode)
 
                 if #available(iOS 26.0, *) {
-                    Toggle("Liquid Glass (Beta, iOS 26+)", isOn: $isBetaGlassEnabled)
+                    Toggle("Liquid Glass (iOS 26+)", isOn: $isBetaGlassEnabled)
                 } else {
-                    Toggle("Liquid Glass (Beta, iOS 26+)", isOn: .constant(false))
+                    Toggle("Liquid Glass (iOS 26+)", isOn: .constant(false))
                         .disabled(true)
                         .foregroundStyle(.secondary)
                 }
@@ -516,7 +516,7 @@ struct SettingsPanel: View {
                         .buttonStyle(.plain)
                     }
 
-                    Text("Midnight Neon adds glowing tube borders, subtle animated flicker, and a retro grid backdrop to your stacks, panels, and job detail views.")
+                    Text("Midnight Neon adds glowing tube borders, subtle animated flicker, and a retro grid backdrop to your stacks, panels, and job detail views. (Liquid Glass must be ON to use this theme)")
                         .font(.footnote)
                         .foregroundStyle(Color.cyan)          // CYAN body
                         .multilineTextAlignment(.leading)

@@ -9,6 +9,8 @@ struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var hSize
     @EnvironmentObject private var theme: ThemeManager
+    @EnvironmentObject private var whatsNew: WhatsNewManager
+
 
     // UI State
     @State private var isRenaming = false
@@ -33,6 +35,9 @@ struct HomeView: View {
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("isBetaGlassEnabled") private var isBetaGlassEnabled = false
     @AppStorage("isTrueStackEnabled") private var isTrueStackEnabled = false
+    // NEW: one-time flag so we don't re-run this logic every launch
+    @AppStorage("didBootstrapLiquidGlassDefault") private var didBootstrapLiquidGlassDefault = false
+
 
     // Existing hero metrics (used on iPhone flow only)
     private let heroLogoHeight: CGFloat = 120   // logo size (applies to both standard & neon)
@@ -53,25 +58,53 @@ struct HomeView: View {
     }
 
     var body: some View {
-        // When Beta Glass *and* True Stack are ON (iOS 26+), show the Card Deck host.
-        if #available(iOS 26.0, *), isBetaGlassEnabled && isTrueStackEnabled {
-            TrueStackDeckHost(jobs: jobs)
-                .preferredColorScheme(isDarkMode ? .dark : .light)
-        } else {
-            // Branch by size class: regular = iPad (split), compact = iPhone (existing flow)
-            if hSize == .regular {
-                ZStack {
-                    padBackgroundView          // ← uses MidnightNeonDeckBackground for neon
-                        .ignoresSafeArea()
-                    iPadSplitView
-                }
-                .preferredColorScheme(isDarkMode ? .dark : .light)
-            } else {
-                iPhoneStackView
+        ZStack {
+            // When Beta Glass *and* True Stack are ON (iOS 26+), show the Card Deck host.
+            if #available(iOS 26.0, *), isBetaGlassEnabled && isTrueStackEnabled {
+                TrueStackDeckHost(jobs: jobs)
                     .preferredColorScheme(isDarkMode ? .dark : .light)
+            } else {
+                // Branch by size class: regular = iPad (split), compact = iPhone (existing flow)
+                if hSize == .regular {
+                    ZStack {
+                        padBackgroundView          // ← uses MidnightNeonDeckBackground for neon
+                            .ignoresSafeArea()
+                        iPadSplitView
+                    }
+                    .preferredColorScheme(isDarkMode ? .dark : .light)
+                } else {
+                    iPhoneStackView
+                        .preferredColorScheme(isDarkMode ? .dark : .light)
+                }
+            }
+
+            // MARK: - What's New overlay
+            if whatsNew.shouldShowWhatsNew {
+                WhatsNewPanel(
+                    isPresented: Binding(
+                        get: { whatsNew.shouldShowWhatsNew },
+                        set: { newValue in
+                            if !newValue {
+                                // Whenever the panel is dismissed, mark this version as seen.
+                                whatsNew.markSeen()
+                            }
+                        }
+                    ),
+                    onExploreThemes: {
+                        // Deep-link into Settings → Themes by opening SettingsPanel.
+                        whatsNew.markSeen()
+                        showSettings = true
+                    }
+                )
+                .zIndex(50)
             }
         }
+        .onAppear {
+            bootstrapLiquidGlassIfNeeded()
+            whatsNew.handleLaunch()
+        }
     }
+
 
     // MARK: - iPhone (existing NavigationStack flow, now with empty-state overlay)
 
@@ -521,6 +554,27 @@ struct HomeView: View {
     }
 
     // MARK: - Background helpers (refactored)
+    
+    //turns LQG on for new users by default
+    private func bootstrapLiquidGlassIfNeeded() {
+        // Only run this logic once, ever.
+        guard didBootstrapLiquidGlassDefault == false else { return }
+
+        // Mark that we've performed the bootstrap so we don't do it again.
+        didBootstrapLiquidGlassDefault = true
+
+        // Heuristic: if there are NO jobs at first launch, treat this as a fresh install.
+        // Existing users almost always have at least one Job already.
+        if jobs.isEmpty {
+            if #available(iOS 26.0, *) {
+                isBetaGlassEnabled = true
+            } else {
+                // On iOS < 26 there is no real "Liquid Glass" anyway,
+                // so we don't need to do anything special.
+            }
+        }
+    }
+
 
     /// A reusable subtle gradient for non-neon cases.
     @ViewBuilder
