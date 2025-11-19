@@ -7,6 +7,8 @@
 
 
 import SwiftUI
+import WidgetKit
+
 
 // MARK: - IDs
 
@@ -89,9 +91,20 @@ final class ThemeManager: ObservableObject {
         }
 
     func select(_ id: AppThemeID) {
+        // Existing behavior
         selectedThemeIDRaw = id.rawValue
         objectWillChange.send()
+
+        // NEW: mirror theme into the App Group for the widget
+        if let defaults = UserDefaults(suiteName: "group.com.coldcodebliss.nexusstack") {
+            defaults.set(id.rawValue, forKey: "selectedThemeID")
+        }
+
+        // NEW: ask WidgetKit to rebuild the widget’s timeline
+        WidgetCenter.shared.reloadTimelines(ofKind: "NeonDeckGlanceWidget")
     }
+
+
 
     func palette(_ scheme: ColorScheme) -> ThemePalette {
         let theme = registry[currentID] ?? SystemTheme()

@@ -11,8 +11,7 @@ import SwiftUI
 @main
 struct NexusStackWidgetsBundle: WidgetBundle {
     var body: some Widget {
-        NexusStackWidgets()
-        NexusStackWidgetsControl()
-        NexusStackWidgetsLiveActivity()
+        NeonDeckGlanceWidget()
     }
 }
+

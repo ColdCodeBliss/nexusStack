@@ -8,9 +8,19 @@
 
 /* Begin PBXBuildFile section */
 		1242D4212EC4FA51006FCB1C /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 1242D4202EC4FA51006FCB1C /* .gitignore */; };
+		12A663902ECD3E5E008839F5 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 12A6638F2ECD3E5E008839F5 /* WidgetKit.framework */; };
+		12A663922ECD3E5E008839F5 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 12A663912ECD3E5E008839F5 /* SwiftUI.framework */; };
+		12A663A32ECD3E60008839F5 /* NexusStackWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 12A6638D2ECD3E5E008839F5 /* NexusStackWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		12A663A12ECD3E60008839F5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 12E9B8522E6B8C0B00AB4AED /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12A6638C2ECD3E5E008839F5;
+			remoteInfo = NexusStackWidgetsExtension;
+		};
 		12E9B86A2E6B8C0D00AB4AED /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 12E9B8522E6B8C0B00AB4AED /* Project object */;
@@ -27,14 +37,50 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		12A663A82ECD3E60008839F5 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				12A663A32ECD3E60008839F5 /* NexusStackWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		1242D4202EC4FA51006FCB1C /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		12A6638D2ECD3E5E008839F5 /* NexusStackWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NexusStackWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		12A6638F2ECD3E5E008839F5 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		12A663912ECD3E5E008839F5 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		12A663AA2ECD3F26008839F5 /* NexusStackWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NexusStackWidgetsExtension.entitlements; sourceTree = "<group>"; };
 		12E9B85A2E6B8C0B00AB4AED /* OE Hub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "OE Hub.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		12E9B8692E6B8C0D00AB4AED /* OE HubTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "OE HubTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		12E9B8732E6B8C0D00AB4AED /* OE HubUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "OE HubUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		12A663A42ECD3E60008839F5 /* Exceptions for "NexusStackWidgets" folder in "NexusStackWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 12A6638C2ECD3E5E008839F5 /* NexusStackWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		12A663932ECD3E5E008839F5 /* NexusStackWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				12A663A42ECD3E60008839F5 /* Exceptions for "NexusStackWidgets" folder in "NexusStackWidgetsExtension" target */,
+			);
+			path = NexusStackWidgets;
+			sourceTree = "<group>";
+		};
 		12DAB3EA2EC2FBAA00687A3B /* Screenshots */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Screenshots;
@@ -58,6 +104,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		12A6638A2ECD3E5E008839F5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				12A663922ECD3E5E008839F5 /* SwiftUI.framework in Frameworks */,
+				12A663902ECD3E5E008839F5 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		12E9B8572E6B8C0B00AB4AED /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -82,13 +137,25 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		12A6638E2ECD3E5E008839F5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				12A6638F2ECD3E5E008839F5 /* WidgetKit.framework */,
+				12A663912ECD3E5E008839F5 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		12E9B8512E6B8C0B00AB4AED = {
 			isa = PBXGroup;
 			children = (
+				12A663AA2ECD3F26008839F5 /* NexusStackWidgetsExtension.entitlements */,
 				12DAB3EA2EC2FBAA00687A3B /* Screenshots */,
 				12E9B85C2E6B8C0B00AB4AED /* OE Hub */,
 				12E9B86C2E6B8C0D00AB4AED /* OE HubTests */,
 				12E9B8762E6B8C0D00AB4AED /* OE HubUITests */,
+				12A663932ECD3E5E008839F5 /* NexusStackWidgets */,
+				12A6638E2ECD3E5E008839F5 /* Frameworks */,
 				12E9B85B2E6B8C0B00AB4AED /* Products */,
 				1242D4202EC4FA51006FCB1C /* .gitignore */,
 			);
@@ -100,6 +167,7 @@
 				12E9B85A2E6B8C0B00AB4AED /* OE Hub.app */,
 				12E9B8692E6B8C0D00AB4AED /* OE HubTests.xctest */,
 				12E9B8732E6B8C0D00AB4AED /* OE HubUITests.xctest */,
+				12A6638D2ECD3E5E008839F5 /* NexusStackWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -107,6 +175,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		12A6638C2ECD3E5E008839F5 /* NexusStackWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 12A663A52ECD3E60008839F5 /* Build configuration list for PBXNativeTarget "NexusStackWidgetsExtension" */;
+			buildPhases = (
+				12A663892ECD3E5E008839F5 /* Sources */,
+				12A6638A2ECD3E5E008839F5 /* Frameworks */,
+				12A6638B2ECD3E5E008839F5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				12A663932ECD3E5E008839F5 /* NexusStackWidgets */,
+			);
+			name = NexusStackWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = NexusStackWidgetsExtension;
+			productReference = 12A6638D2ECD3E5E008839F5 /* NexusStackWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		12E9B8592E6B8C0B00AB4AED /* OE Hub */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 12E9B87D2E6B8C0D00AB4AED /* Build configuration list for PBXNativeTarget "OE Hub" */;
@@ -114,10 +204,12 @@
 				12E9B8562E6B8C0B00AB4AED /* Sources */,
 				12E9B8572E6B8C0B00AB4AED /* Frameworks */,
 				12E9B8582E6B8C0B00AB4AED /* Resources */,
+				12A663A82ECD3E60008839F5 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				12A663A22ECD3E60008839F5 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				12DAB3EA2EC2FBAA00687A3B /* Screenshots */,
@@ -183,9 +275,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1630;
+				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 1630;
 				TargetAttributes = {
+					12A6638C2ECD3E5E008839F5 = {
+						CreatedOnToolsVersion = 26.0;
+					};
 					12E9B8592E6B8C0B00AB4AED = {
 						CreatedOnToolsVersion = 16.3;
 					};
@@ -216,11 +311,19 @@
 				12E9B8592E6B8C0B00AB4AED /* OE Hub */,
 				12E9B8682E6B8C0D00AB4AED /* OE HubTests */,
 				12E9B8722E6B8C0D00AB4AED /* OE HubUITests */,
+				12A6638C2ECD3E5E008839F5 /* NexusStackWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		12A6638B2ECD3E5E008839F5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		12E9B8582E6B8C0B00AB4AED /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -246,6 +349,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		12A663892ECD3E5E008839F5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		12E9B8562E6B8C0B00AB4AED /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -270,6 +380,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		12A663A22ECD3E60008839F5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 12A6638C2ECD3E5E008839F5 /* NexusStackWidgetsExtension */;
+			targetProxy = 12A663A12ECD3E60008839F5 /* PBXContainerItemProxy */;
+		};
 		12E9B86B2E6B8C0D00AB4AED /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 12E9B8592E6B8C0B00AB4AED /* OE Hub */;
@@ -283,6 +398,72 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		12A663A62ECD3E60008839F5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = NexusStackWidgetsExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 86MW3ZP4BF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NexusStackWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NexusStackWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.5;
+				PRODUCT_BUNDLE_IDENTIFIER = "ColdCodeBliss.OE-Hub.NexusStackWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		12A663A72ECD3E60008839F5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = NexusStackWidgetsExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 86MW3ZP4BF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NexusStackWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NexusStackWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.5;
+				PRODUCT_BUNDLE_IDENTIFIER = "ColdCodeBliss.OE-Hub.NexusStackWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		12E9B87B2E6B8C0D00AB4AED /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -407,6 +588,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "OE Hub/OE Hub.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -440,6 +622,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "OE Hub/OE Hub.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -539,6 +722,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		12A663A52ECD3E60008839F5 /* Build configuration list for PBXNativeTarget "NexusStackWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				12A663A62ECD3E60008839F5 /* Debug */,
+				12A663A72ECD3E60008839F5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		12E9B8552E6B8C0B00AB4AED /* Build configuration list for PBXProject "OE Hub" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

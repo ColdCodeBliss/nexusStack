@@ -1,30 +1,34 @@
 //
-//  WidgetSharedKey.swift
+//  NeonDeckGlanceWidget.swift
 //  OE Hub
 //
 //  Created by Ryan Bliss on 11/18/25.
 //
-
 
 import WidgetKit
 import SwiftUI
 
 // MARK: - Shared constants
 
-/// Replace this with your real App Group identifier.
+/// App Group identifier shared with the main app.
 private let appGroupID = "group.com.coldcodebliss.nexusstack"
 
 /// Keys used in the shared UserDefaults for widget data.
 private enum WidgetSharedKey {
-    static let jobCount = "widgetJobCount"
-    static let selectedThemeID = "selectedThemeID" // mirrors ThemeManager's AppStorage key
+    // NOTE: jobCount removed – widget now only cares about weekly deliverables + theme.
+    static let selectedThemeID     = "selectedThemeID"          // mirrors ThemeManager's AppStorage key
+    static let weeklyDeliverables  = "widgetWeeklyDeliverables" // total active deliverables
+}
+
+private var neonMagenta: Color {
+    Color(red: 1.0, green: 0.25, blue: 0.75) // tweak if you want a different magenta
 }
 
 // MARK: - Timeline Entry
 
 struct NeonDeckGlanceEntry: TimelineEntry {
     let date: Date
-    let jobCount: Int
+    let weeklyDeliverables: Int
     let isMidnightNeonActive: Bool
 }
 
@@ -35,7 +39,7 @@ struct NeonDeckGlanceProvider: TimelineProvider {
     func placeholder(in context: Context) -> NeonDeckGlanceEntry {
         NeonDeckGlanceEntry(
             date: Date(),
-            jobCount: 5,
+            weeklyDeliverables: 12,
             isMidnightNeonActive: true
         )
     }
@@ -47,8 +51,9 @@ struct NeonDeckGlanceProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<NeonDeckGlanceEntry>) -> Void) {
         let entry = loadCurrentEntry()
 
-        // Simple: refresh every 30 minutes.
-        let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
+        // Refresh every 30 minutes.
+        let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date())
+            ?? Date().addingTimeInterval(1800)
         let timeline = Timeline(entries: [entry], policy: .after(next))
         completion(timeline)
     }
@@ -58,13 +63,13 @@ struct NeonDeckGlanceProvider: TimelineProvider {
     private func loadCurrentEntry() -> NeonDeckGlanceEntry {
         let defaults = UserDefaults(suiteName: appGroupID)
 
-        let jobCount = defaults?.integer(forKey: WidgetSharedKey.jobCount) ?? 0
+        let weekly = defaults?.integer(forKey: WidgetSharedKey.weeklyDeliverables) ?? 0
         let themeID = defaults?.string(forKey: WidgetSharedKey.selectedThemeID) ?? "system"
         let isNeon = (themeID == "midnightNeon")
 
         return NeonDeckGlanceEntry(
             date: Date(),
-            jobCount: jobCount,
+            weeklyDeliverables: weekly,
             isMidnightNeonActive: isNeon
         )
     }
@@ -75,27 +80,29 @@ struct NeonDeckGlanceProvider: TimelineProvider {
 struct NeonDeckGlanceWidgetEntryView: View {
     var entry: NeonDeckGlanceEntry
 
+    @Environment(\.widgetFamily) private var family
+
+    // Always read the latest theme from the shared App Group; fall back to entry.
+    private var isNeon: Bool {
+        if let defaults = UserDefaults(suiteName: appGroupID) {
+            let id = defaults.string(forKey: WidgetSharedKey.selectedThemeID)
+                ?? (entry.isMidnightNeonActive ? "midnightNeon" : "system")
+            return id == "midnightNeon"
+        }
+        return entry.isMidnightNeonActive
+    }
+
     var body: some View {
         ZStack {
-            backgroundLayer
-
-            VStack(spacing: 10) {
-                deckVisualization
-
-                VStack(spacing: 2) {
-                    Text("\(entry.jobCount) job\(entry.jobCount == 1 ? "" : "s") in your stack")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-
-                    Text("Tap to open .nexusStack")
-                        .font(.system(size: 11, weight: .regular, design: .rounded))
-                        .foregroundStyle(.secondary)
-                }
+            HStack(spacing: 10) {
+                leftCard
+                rightCard
             }
             .padding(12)
         }
-        // Deep link; you can handle `nexusstack://open` in the main app.
+        .containerBackground(for: .widget) {
+            backgroundLayer
+        }
         .widgetURL(URL(string: "nexusstack://open"))
     }
 
@@ -103,26 +110,20 @@ struct NeonDeckGlanceWidgetEntryView: View {
 
     @ViewBuilder
     private var backgroundLayer: some View {
-        if entry.isMidnightNeonActive {
-            // If you also add MidnightNeonDeckBackground.swift to the widget target,
-            // you can use it directly here:
-            //
-            // MidnightNeonDeckBackground()
-            //
-            // For safety, here’s a simplified inline version:
+        if isNeon {
+            // NEON: full-bleed gradient + grid
+            GeometryReader { proxy in
+                let size = proxy.size
 
-            LinearGradient(
-                colors: [
-                    Color(red: 0.03, green: 0.02, blue: 0.10),
-                    Color(red: 0.02, green: 0.03, blue: 0.20)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .overlay(
-                // Simple neon grid
-                GeometryReader { proxy in
-                    let size = proxy.size
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.03, green: 0.02, blue: 0.10),
+                        Color(red: 0.02, green: 0.03, blue: 0.20)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .overlay(
                     Canvas { context, _ in
                         let spacing: CGFloat = 16
                         var path = Path()
@@ -143,99 +144,139 @@ struct NeonDeckGlanceWidgetEntryView: View {
                             y += spacing
                         }
 
-                        var gridStyle = GraphicsContext.StrokeStyle()
-                        gridStyle.lineWidth = 0.7
-
                         context.stroke(
                             path,
                             with: .color(Color.cyan.opacity(0.38)),
-                            style: gridStyle
+                            lineWidth: 0.7
                         )
                     }
                     .blendMode(.plusLighter)
-                }
-            )
-        } else {
-            LinearGradient(
-                colors: [
-                    Color(.systemBackground),
-                    Color(.secondarySystemBackground)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
-
-    // MARK: - Deck Visualization
-
-    private var deckVisualization: some View {
-        ZStack {
-            let cardCount = 4
-            ForEach(0..<cardCount, id: \.self) { index in
-                let offset = CGFloat(cardCount - index) * 4.0
-                let scale = 1.0 - (CGFloat(index) * 0.05)
-
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(cardFill(for: index))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(cardStroke(for: index), lineWidth: 1.2)
-                    )
-                    .shadow(color: shadowColor(for: index), radius: 12, x: 0, y: 0)
-                    .scaleEffect(scale)
-                    .offset(y: offset)
+                )
             }
-
-            // Tiny top-glow accent line
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Color.white.opacity(entry.isMidnightNeonActive ? 0.65 : 0.20), lineWidth: 1)
-                .frame(width: 72, height: 16)
-                .offset(y: -22)
-                .blendMode(.plusLighter)
-                .opacity(0.7)
+        } else {
+            // NON-NEON: solid black background
+            Color.black
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 70)
     }
+
+    // MARK: - Cards
+
+    private var leftCard: some View {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(cardFill(for: 0))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(cardStroke(for: 0), lineWidth: 1.4)
+            )
+            .shadow(
+                color: shadowColor(for: 0),
+                radius: isNeon ? 12 : 6,
+                x: 0, y: 4
+            )
+            .overlay(
+                VStack(spacing: 4) {
+                    Text(family == .systemSmall ? "DUE" : "WEEKLY DELIVERABLES")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .monospaced()                    // <- more “digital”
+                        .tracking(0.8)                   // <- spaced-out sci-fi feel
+                        .opacity(0.9)
+                        .foregroundStyle(isNeon ? neonMagenta : Color.black)
+
+                    Text("\(entry.weeklyDeliverables)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .minimumScaleFactor(0.7)
+                        .foregroundStyle(isNeon ? Color.cyan : Color.black)
+                }
+                .multilineTextAlignment(.center)
+                .padding(10)
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: .center
+                )
+            )
+    }
+
+
+    private var rightCard: some View {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(cardFill(for: 1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(cardStroke(for: 1), lineWidth: 1.4)
+            )
+            .shadow(
+                color: shadowColor(for: 1),
+                radius: isNeon ? 12 : 6,
+                x: 0, y: 4
+            )
+            .overlay(
+                Image(isNeon ? "nexusStack_logo_neon_b" : "nexusStack_logo_icon")
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+                    .padding(10)
+            )
+    }
+
+    // MARK: - Card styling
 
     private func cardFill(for index: Int) -> LinearGradient {
-        if entry.isMidnightNeonActive {
-            let base = Color(red: 0.05, green: 0.04, blue: 0.15)
-            let top = Color(red: 0.12 + Double(index) * 0.02,
-                            green: 0.05,
-                            blue: 0.25 + Double(index) * 0.03)
+        if isNeon {
+            // NEON: deep purple cards
+            let baseTop = Color(
+                red: 0.21 + Double(index) * 0.02,
+                green: 0.05,
+                blue: 0.35 + Double(index) * 0.03
+            )
+            let baseBottom = Color(red: 0.05, green: 0.04, blue: 0.15)
 
             return LinearGradient(
-                colors: [top, base],
+                colors: [baseTop, baseBottom],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         } else {
-            let base = Color(.systemBackground)
-            let top = Color(.secondarySystemBackground)
-            return LinearGradient(
-                colors: [top, base],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // NON-NEON:
+            // left card (index 0) = yellow, right card (index 1) = black
+            if index == 0 {
+                let yellow = Color(red: 0.99, green: 0.86, blue: 0.25)
+                return LinearGradient(
+                    colors: [yellow.opacity(0.98), yellow.opacity(0.90)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            } else {
+                let blackTop = Color(red: 0.06, green: 0.06, blue: 0.06)
+                let blackBottom = Color.black
+                return LinearGradient(
+                    colors: [blackTop, blackBottom],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
         }
     }
 
     private func cardStroke(for index: Int) -> Color {
-        if entry.isMidnightNeonActive {
+        if isNeon {
             let base = Color.cyan
             return base.opacity(0.55 + Double(index) * 0.1)
         } else {
-            return Color.black.opacity(0.08 + Double(index) * 0.04)
+            // NON-NEON: left card black border, right card yellow border
+            if index == 0 {
+                return Color.black
+            } else {
+                return Color(red: 0.99, green: 0.86, blue: 0.25)
+            }
         }
     }
 
     private func shadowColor(for index: Int) -> Color {
-        if entry.isMidnightNeonActive {
-            return Color.cyan.opacity(0.25 + Double(index) * 0.05)
+        if isNeon {
+            return Color.cyan.opacity(0.20 + Double(index) * 0.05)
         } else {
-            return Color.black.opacity(0.08)
+            return Color.black.opacity(0.6)
         }
     }
 }
@@ -250,16 +291,7 @@ struct NeonDeckGlanceWidget: Widget {
             NeonDeckGlanceWidgetEntryView(entry: entry)
         }
         .configurationDisplayName(".nexusStack – Deck Glance")
-        .description("A miniature deck-like glance with your current job count.")
+        .description("A miniature glance showing your active deliverables and theme.")
         .supportedFamilies([.systemSmall, .systemMedium])
-    }
-}
-
-// MARK: - Bundle
-
-@main
-struct NexusStackWidgets: WidgetBundle {
-    var body: some Widget {
-        NeonDeckGlanceWidget()
     }
 }
