@@ -24,7 +24,7 @@ struct OE_HubApp: App {
                                       Note.self])
                 .environmentObject(theme)
                 .environmentObject(whatsNewManager)
-                //.font(.custom("BerkeleyMono-Bold", size: 17, relativeTo: .body)) // ⬅️ global app font
+                .font(.custom("BerkeleyMono-Bold", size: 17, relativeTo: .body)) // ⬅️ global app font
         }
     }
 }

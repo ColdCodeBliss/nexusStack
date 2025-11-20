@@ -77,6 +77,13 @@ struct TrueStackDeckView: View {
     private func scaleForIndex(_ idx: Int) -> CGFloat { max(0.82, 1.0 - CGFloat(idx) * 0.06) }
     private let nonTopOpacity: Double = 0.92
     private let swipeThreshold: CGFloat = 90
+    
+    // True Stack card typography (BerkeleyMono-Bold)
+        private let tsTitleFont      = Font.custom("BerkeleyMono-Bold", size: 22, relativeTo: .title3)
+        private let tsSubtitleFont   = Font.custom("BerkeleyMono-Bold", size: 11, relativeTo: .caption2)
+        private let tsInfoLabelFont  = Font.custom("BerkeleyMono-Bold", size: 13, relativeTo: .subheadline)
+        private let tsInfoValueFont  = Font.custom("BerkeleyMono-Bold", size: 15, relativeTo: .body)
+
 
     // Dynamic height for the **top** card’s content
     @State private var topCardContentHeight: CGFloat = 0
@@ -373,10 +380,11 @@ struct TrueStackDeckView: View {
         let content = VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(job.title)
-                    .font(.headline.weight(.semibold))
+                    .font(tsTitleFont)
                     .lineLimit(1)
+
                 Text("Created \(tsFormattedDate(job.creationDate))")
-                    .font(.caption2)
+                    .font(tsSubtitleFont)
                     .foregroundStyle(.secondary)
             }
             .padding(.bottom, 4)
@@ -384,7 +392,7 @@ struct TrueStackDeckView: View {
             Divider().opacity(0.12)
 
             infoGrid(for: job)
-                .font(.subheadline)
+                
         }
         .padding(14)
         .fixedSize(horizontal: false, vertical: true)
@@ -542,15 +550,21 @@ struct TrueStackDeckView: View {
 
     @ViewBuilder
     private func infoRow(_ label: String, _ value: String?) -> some View {
-        if let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty {
+        if let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !trimmed.isEmpty {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(label).foregroundStyle(.secondary)
+                Text(label)
+                    .font(tsInfoLabelFont)
+                    .foregroundStyle(.secondary)
+
                 Text(trimmed)
+                    .font(tsInfoValueFont)
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
         }
     }
+
 
     private func payString(rate: Double, type: Job.PayType) -> String? {
         guard rate > 0 else { return nil }
