@@ -54,7 +54,8 @@ struct JobRowView: View {
 
         VStack(alignment: .leading, spacing: 8) {
             Text(job.title)
-                .font(.headline)
+                .font(.custom("BerkeleyMono-Bold", size: 18, relativeTo: .headline))
+            //  .font(.headline) before berkeley
 
             Text("Created: \(job.creationDate, format: .dateTime.day().month().year())")
                 .font(.subheadline)
