@@ -1,16 +1,16 @@
 nexusStack - Productivity Task Manager
 
-| Home View | Liquid Glass |
+| Home View | True Stack Deck View (TSDV)|
 |:---------:|:------------:|
-| <img src="Screenshots/HomeView.png" alt="HomeView" width="400"> | <img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="400"> |
+| <img src="Screenshots/HomeView.png" alt="HomeView" width="400"> | <img src="Screenshots/TrueStackDeckView.png" alt="CardDeckView" width="400"> |
 
-| Home View (Midnight Neon)| Card Deck View (Midnight Neon) |
+| Home View (Midnight Neon)| TSDV (Midnight Neon) |
 |:---------:|:------------:|
 | <img src="Screenshots/MidnightNeonHomeView.png" alt="MidnightNeonHomeView" width="400"> | <img src="Screenshots/MidnightNeonTSDV.png" alt="MidnightNeonTSDV" width="400"> |
 
-| Home View | Weekly Deliverables Widget |
+| Liquid Glass  | Weekly Deliverables Widget |
 |:---------:|:------------:|
-| <img src="Screenshots/TrueStackDeckView.png" alt="CardDeckView" width="400"> | <img src="Screenshots/widget.png" alt="NeonThemeWidget" width="400"> |
+| <img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="400"> | <img src="Screenshots/widget.png" alt="NeonThemeWidget" width="400"> |
 
 <!--<img src="Screenshots/HomeView.png" alt="HomeView" width="482" height="1049"><img src="Screenshots/LiquidGlass.png" alt="LiquidGlassPanel" width="482" height="1049">
 <img src="Screenshots/TrueStackDeckView.png" alt="CardDeckView" width="482" height="1049">-->
