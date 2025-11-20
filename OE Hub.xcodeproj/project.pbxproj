@@ -11,6 +11,8 @@
 		12A663902ECD3E5E008839F5 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 12A6638F2ECD3E5E008839F5 /* WidgetKit.framework */; };
 		12A663922ECD3E5E008839F5 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 12A663912ECD3E5E008839F5 /* SwiftUI.framework */; };
 		12A663A32ECD3E60008839F5 /* NexusStackWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 12A6638D2ECD3E5E008839F5 /* NexusStackWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		12A6641A2ECE8B66008839F5 /* BerkeleyMono-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 12A664192ECE8B66008839F5 /* BerkeleyMono-Bold.otf */; };
+		12A6641B2ECE8B66008839F5 /* BerkeleyMono-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 12A664192ECE8B66008839F5 /* BerkeleyMono-Bold.otf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +59,7 @@
 		12A6638F2ECD3E5E008839F5 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		12A663912ECD3E5E008839F5 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		12A663AA2ECD3F26008839F5 /* NexusStackWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NexusStackWidgetsExtension.entitlements; sourceTree = "<group>"; };
+		12A664192ECE8B66008839F5 /* BerkeleyMono-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BerkeleyMono-Bold.otf"; sourceTree = "<group>"; };
 		12E9B85A2E6B8C0B00AB4AED /* OE Hub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "OE Hub.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		12E9B8692E6B8C0D00AB4AED /* OE HubTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "OE HubTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		12E9B8732E6B8C0D00AB4AED /* OE HubUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "OE HubUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -149,6 +152,7 @@
 		12E9B8512E6B8C0B00AB4AED = {
 			isa = PBXGroup;
 			children = (
+				12A664192ECE8B66008839F5 /* BerkeleyMono-Bold.otf */,
 				12A663AA2ECD3F26008839F5 /* NexusStackWidgetsExtension.entitlements */,
 				12DAB3EA2EC2FBAA00687A3B /* Screenshots */,
 				12E9B85C2E6B8C0B00AB4AED /* OE Hub */,
@@ -321,6 +325,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				12A6641A2ECE8B66008839F5 /* BerkeleyMono-Bold.otf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -329,6 +334,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1242D4212EC4FA51006FCB1C /* .gitignore in Resources */,
+				12A6641B2ECE8B66008839F5 /* BerkeleyMono-Bold.otf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

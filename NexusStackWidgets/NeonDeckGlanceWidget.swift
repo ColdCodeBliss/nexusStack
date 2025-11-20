@@ -176,24 +176,19 @@ struct NeonDeckGlanceWidgetEntryView: View {
             .overlay(
                 VStack(spacing: 4) {
                     Text(family == .systemSmall ? "DUE" : "WEEKLY DELIVERABLES")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .monospaced()                    // <- more “digital”
-                        .tracking(0.8)                   // <- spaced-out sci-fi feel
+                        .font(.custom("BerkeleyMono-Bold", size: 10))
+                        .tracking(0.8)
                         .opacity(0.9)
                         .foregroundStyle(isNeon ? neonMagenta : Color.black)
 
                     Text("\(entry.weeklyDeliverables)")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(.custom("BerkeleyMono-Bold", size: 20))
                         .minimumScaleFactor(0.7)
                         .foregroundStyle(isNeon ? Color.cyan : Color.black)
                 }
                 .multilineTextAlignment(.center)
                 .padding(10)
-                .frame(
-                    maxWidth: .infinity,
-                    maxHeight: .infinity,
-                    alignment: .center
-                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             )
     }
 
