@@ -531,12 +531,12 @@ struct TrueStackDeckView: View {
     @ViewBuilder
     private func infoGrid(for job: Job) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            infoRow("Email", job.email)
-            infoRow("Pay Rate", payString(rate: job.payRate, type: job.compensation))
-            infoRow("Manager", job.managerName)
-            infoRow("Role / Title", job.roleTitle)
-            infoRow("Equipment", job.equipmentList)
-            infoRow("Job Type", job.type.rawValue + (job.contractEndDate.map { "  •  Ends \(tsFormattedDate($0))" } ?? ""))
+            infoRow("Email:", job.email)
+            infoRow("Pay Rate:", payString(rate: job.payRate, type: job.compensation))
+            infoRow("Manager:", job.managerName)
+            infoRow("My Title:", job.roleTitle)
+            infoRow("Assigned Assets:", job.equipmentList)
+            infoRow("Job Type:", job.type.rawValue + (job.contractEndDate.map { "  •  Ends \(tsFormattedDate($0))" } ?? ""))
         }
     }
 
