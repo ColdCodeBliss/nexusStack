@@ -52,10 +52,10 @@ struct InfoTabView: View {
                             Text("Manager: \(managerName)")
                         }
                         if !roleTitle.isEmpty {
-                            Text("Role/Title: \(roleTitle)")
+                            Text("My Title: \(roleTitle)")
                         }
                         if !equipmentList.isEmpty {
-                            Text("Equipment/Assets: \(equipmentList)")
+                            Text("Assigned Assets: \(equipmentList)")
                         }
                         Text("Job Type: \(jobType)")
                         if jobType == "Contracted", let endDate = contractEndDate {
@@ -109,9 +109,9 @@ struct InfoTabView: View {
                         }
 
                         TextField("Manager Name", text: $managerName)
-                        TextField("Role/Title", text: $roleTitle)
+                        TextField("My Title", text: $roleTitle)
 
-                        TextField("Equipment/Assets List", text: $equipmentList, axis: .vertical)
+                        TextField("Assigned Assets List", text: $equipmentList, axis: .vertical)
                             .lineLimit(3, reservesSpace: true)
 
                         Picker("Job Type", selection: $jobType) {
@@ -298,10 +298,10 @@ private struct InfoEditorPanel: View {
 
                             TextField("Manager Name", text: $managerName)
                                 .textFieldStyle(.roundedBorder)
-                            TextField("Role/Title", text: $roleTitle)
+                            TextField("My Title", text: $roleTitle)
                                 .textFieldStyle(.roundedBorder)
 
-                            TextField("Equipment/Assets List", text: $equipmentList, axis: .vertical)
+                            TextField("Assigned Assets", text: $equipmentList, axis: .vertical)
                                 .lineLimit(3, reservesSpace: true)
                                 .textFieldStyle(.roundedBorder)
 

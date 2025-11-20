@@ -1,5 +1,7 @@
 import SwiftUI
 import SwiftData
+import WidgetKit
+
 
 struct HomeView: View {
     // Queries (initialized in init to ease the type checker)
@@ -102,6 +104,16 @@ struct HomeView: View {
         .onAppear {
             bootstrapLiquidGlassIfNeeded()
             whatsNew.handleLaunch()
+            syncJobCountToWidgets()
+            
+            // Push current theme into shared defaults on launch
+            if let defaults = UserDefaults(suiteName: "group.com.coldcodebliss.nexusstack") {
+                defaults.set(theme.currentID.rawValue, forKey: "selectedThemeID")
+            }
+            WidgetCenter.shared.reloadTimelines(ofKind: "NeonDeckGlanceWidget")
+        }
+        .onChange(of: jobs.count) {
+            syncJobCountToWidgets()
         }
     }
 
@@ -555,6 +567,32 @@ struct HomeView: View {
 
     // MARK: - Background helpers (refactored)
     
+    
+    private func syncJobCountToWidgets() {
+        guard let defaults = UserDefaults(suiteName: "group.com.coldcodebliss.nexusstack") else { return }
+
+        let weekly = computeWeeklyDeliverablesCount()
+
+        defaults.set(jobs.count, forKey: "widgetJobCount")
+        defaults.set(weekly, forKey: "widgetWeeklyDeliverables")
+
+        WidgetCenter.shared.reloadTimelines(ofKind: "NeonDeckGlanceWidget")
+    }
+
+    
+    // MARK: - Widget helpers
+
+    private func computeWeeklyDeliverablesCount() -> Int {
+        // Count ALL active (not completed) deliverables across all jobs.
+        // This ensures older deliverables from pre-existing jobs are included.
+        return jobs
+            .flatMap { $0.deliverables }
+            .filter { !$0.isCompleted }
+            .count
+    }
+
+
+    
     //turns LQG on for new users by default
     private func bootstrapLiquidGlassIfNeeded() {
         // Only run this logic once, ever.
@@ -670,4 +708,7 @@ private struct TrueStackDeckHost: View {
             TrueStackDeckView(jobs: jobs)
         }
     }
+
+
+    
 }
